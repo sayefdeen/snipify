@@ -8,6 +8,7 @@ import { saveSnippetCommand } from './commands/saveSnippet';
 import { insertSnippetCommand } from './commands/insertSnippet';
 import { deleteSnippetCommand } from './commands/deleteSnippet';
 import { editSnippetCommand } from './commands/editSnippet';
+import { SnippetQuickPick } from './ui/SnippetQuickPick';
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = vscode.workspace.getConfiguration('snipify');
@@ -18,6 +19,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const treeView = vscode.window.createTreeView('snipify.snippetsView', {
     treeDataProvider: treeProvider,
+    showCollapseAll: false,
   });
 
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -45,12 +47,29 @@ export function activate(context: vscode.ExtensionContext): void {
     return StorageFactory.create(providerType, token);
   };
 
+  const loadSnippets = async (): Promise<void> => {
+    const loggedIn = await auth.isLoggedIn();
+    if (!loggedIn) {
+      return;
+    }
+    treeProvider.setLoading(true);
+    try {
+      const storage = await getStorage();
+      const snippets = await storage.getAll();
+      treeProvider.refresh(snippets);
+    } catch {
+      treeProvider.refresh([]);
+    }
+  };
+
   context.subscriptions.push(treeView, statusBar);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('snipify.login', async () => {
       await loginCommand(auth);
       await refreshStatusBar();
+      await loadSnippets();
+      await vscode.commands.executeCommand('snipify.snippetsView.focus');
     })
   );
 
@@ -91,15 +110,37 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('snipify.refresh', async () => {
-      const storage = await getStorage();
-      const snippets = await storage.getAll();
-      treeProvider.refresh(snippets);
+    vscode.commands.registerCommand('snipify.search', async () => {
+      try {
+        const storage = await getStorage();
+        const snippets = await storage.getAll();
+        const snippet = await SnippetQuickPick.show(snippets);
+        if (snippet) {
+          await insertSnippetCommand(snippet);
+        }
+      } catch (err) {
+        vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
+      }
     })
   );
 
-  // Restore status bar on activation if already logged in
+  context.subscriptions.push(
+    vscode.commands.registerCommand('snipify.refresh', async () => {
+      treeProvider.setLoading(true);
+      try {
+        const storage = await getStorage();
+        const snippets = await storage.getAll();
+        treeProvider.refresh(snippets);
+      } catch (err) {
+        treeProvider.refresh([]);
+        vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
+      }
+    })
+  );
+
+  // On activation: restore status bar and load snippets if already logged in
   refreshStatusBar();
+  loadSnippets();
 }
 
 export function deactivate(): void {}

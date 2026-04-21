@@ -358,37 +358,37 @@ All commands are registered in `extension.ts` using `vscode.commands.registerCom
 - [ ] Test: save a snippet → appears as a Gist on github.com
 - [ ] Test: fetch all snippets → returns correct list
 
-### Phase 4 — Save Snippet Command
-- [ ] Implement `SnippetForm` webview (title, tags, code preview)
-- [ ] Implement `saveSnippet` command end to end
-- [ ] Wire up right-click context menu ("Save as Snippet")
-- [ ] Auto-detect language from active editor
+### Phase 4 — Save Snippet Command ✅
+- [x] Implement `SnippetForm` webview (title, tags, code preview)
+- [x] Implement `saveSnippet` command end to end
+- [x] Wire up right-click context menu ("Save as Snippet")
+- [x] Auto-detect language from active editor
 - [ ] Test: select code → right-click → save → appears in Gists
 
-### Phase 5 — Sidebar UI
-- [ ] Implement `SnippetTreeProvider`
-- [ ] Register the sidebar view in `package.json`
-- [ ] Show all snippets with title and language
-- [ ] Add refresh button
+### Phase 5 — Sidebar UI ✅
+- [x] Implement `SnippetTreeProvider`
+- [x] Register the sidebar view in `package.json`
+- [x] Show all snippets with title and language
+- [x] Add refresh button
 - [ ] Test: snippets appear in sidebar after login
 
-### Phase 6 — Insert Snippet
-- [ ] Implement `insertSnippet` command
-- [ ] Wire up sidebar item click → insert at cursor
-- [ ] Handle edge cases: no active editor, multiple cursors
+### Phase 6 — Insert Snippet ✅
+- [x] Implement `insertSnippet` command
+- [x] Wire up sidebar item click → insert at cursor
+- [x] Handle edge cases: no active editor, multiple cursors
 - [ ] Test: click snippet in sidebar → code inserted at cursor
 
-### Phase 7 — Delete & Edit
-- [ ] Implement `deleteSnippet` command with confirmation dialog
-- [ ] Implement `editSnippet` command (title and tags only)
-- [ ] Add context menu on sidebar items (right-click → delete/edit)
+### Phase 7 — Delete & Edit ✅
+- [x] Implement `deleteSnippet` command with confirmation dialog
+- [x] Implement `editSnippet` command (title and tags only)
+- [x] Add context menu on sidebar items (right-click → delete/edit)
 - [ ] Test: delete removes from Gists, edit updates Gist description
 
-### Phase 8 — Polish
-- [ ] Add `SnippetQuickPick` for keyboard-shortcut search
-- [ ] Add loading indicators (when fetching snippets)
-- [ ] Add error handling and user-facing error messages
-- [ ] Add empty state in sidebar when no snippets exist
+### Phase 8 — Polish ✅
+- [x] Add `SnippetQuickPick` for keyboard-shortcut search
+- [x] Add loading indicators (when fetching snippets)
+- [x] Add error handling and user-facing error messages
+- [x] Add empty state in sidebar when no snippets exist
 - [ ] Add extension icon and README
 - [ ] Test full user flow end to end
 

@@ -68,7 +68,6 @@ export class GitHubGistStorage implements ISnippetStorage {
 
     const snippets: Snippet[] = [];
     for (const gist of gists) {
-      // Fetch full gist to get file content (list endpoint omits content)
       const full = await this.getById(gist.id);
       if (full) {
         snippets.push(full);
@@ -122,7 +121,6 @@ export class GitHubGistStorage implements ISnippetStorage {
     const files: Record<string, { content?: string } | null> = {};
 
     if (updates.title && updates.title !== current.title) {
-      // Rename: delete old filename, create new one
       files[current.title] = null;
       files[updates.title] = { content: updates.code ?? current.code };
     } else {

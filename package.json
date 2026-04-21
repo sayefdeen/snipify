@@ -34,7 +34,15 @@
       { "command": "snipify.editSnippet", "title": "Snipify: Edit Snippet" },
       { "command": "snipify.login", "title": "Snipify: Login with GitHub" },
       { "command": "snipify.logout", "title": "Snipify: Logout" },
-      { "command": "snipify.refresh", "title": "Snipify: Refresh Snippets" }
+      {
+        "command": "snipify.refresh",
+        "title": "Snipify: Refresh Snippets",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "snipify.search",
+        "title": "Snipify: Search Snippets"
+      }
     ],
     "menus": {
       "editor/context": [
@@ -42,6 +50,25 @@
           "command": "snipify.saveSnippet",
           "when": "editorHasSelection",
           "group": "snipify"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "snipify.refresh",
+          "when": "view == snipify.snippetsView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "snipify.editSnippet",
+          "when": "view == snipify.snippetsView && viewItem == snippet",
+          "group": "snipify@1"
+        },
+        {
+          "command": "snipify.deleteSnippet",
+          "when": "view == snipify.snippetsView && viewItem == snippet",
+          "group": "snipify@2"
         }
       ]
     },
