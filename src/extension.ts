@@ -1,14 +1,19 @@
 import * as vscode from 'vscode';
 import { ProviderType } from './models/User';
+import { Snippet } from './models/Snippet';
 import { AuthProviderFactory } from './auth/AuthProviderFactory';
 import { StorageFactory } from './storage/StorageFactory';
-import { SnippetTreeProvider, SnippetTreeItem } from './ui/SnippetTreeProvider';
+import { SnippetTreeProvider } from './ui/SnippetTreeProvider';
 import { loginCommand } from './commands/login';
 import { saveSnippetCommand } from './commands/saveSnippet';
 import { insertSnippetCommand } from './commands/insertSnippet';
 import { deleteSnippetCommand } from './commands/deleteSnippet';
 import { editSnippetCommand } from './commands/editSnippet';
 import { SnippetQuickPick } from './ui/SnippetQuickPick';
+
+function setContext(key: string, value: string): void {
+  vscode.commands.executeCommand('setContext', key, value);
+}
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = vscode.workspace.getConfiguration('snipify');
@@ -19,7 +24,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const treeView = vscode.window.createTreeView('snipify.snippetsView', {
     treeDataProvider: treeProvider,
-    showCollapseAll: false,
+    showCollapseAll: true,
   });
 
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -50,15 +55,20 @@ export function activate(context: vscode.ExtensionContext): void {
   const loadSnippets = async (): Promise<void> => {
     const loggedIn = await auth.isLoggedIn();
     if (!loggedIn) {
+      treeProvider.setAuth('signed-out');
+      setContext('snipify:authState', 'signed-out');
       return;
     }
-    treeProvider.setLoading(true);
+    treeProvider.setAuth('loading');
+    setContext('snipify:authState', 'loading');
     try {
       const storage = await getStorage();
       const snippets = await storage.getAll();
-      treeProvider.refresh(snippets);
+      treeProvider.setSnippets(snippets);
+      setContext('snipify:authState', snippets.length === 0 ? 'empty' : 'ready');
     } catch {
-      treeProvider.refresh([]);
+      treeProvider.setAuth('signed-out');
+      setContext('snipify:authState', 'signed-out');
     }
   };
 
@@ -76,7 +86,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('snipify.logout', async () => {
       await auth.logout();
-      treeProvider.refresh([]);
+      treeProvider.setAuth('signed-out');
+      setContext('snipify:authState', 'signed-out');
       await refreshStatusBar();
       vscode.window.showInformationMessage('Snipify: Logged out');
     })
@@ -90,22 +101,24 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('snipify.insertSnippet', async (item: SnippetTreeItem) => {
-      await insertSnippetCommand(item.snippet);
+    vscode.commands.registerCommand('snipify.insertSnippet', async (snippet: Snippet) => {
+      await insertSnippetCommand(snippet);
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('snipify.deleteSnippet', async (item: SnippetTreeItem) => {
+    vscode.commands.registerCommand('snipify.deleteSnippet', async (snippet: Snippet) => {
       const storage = await getStorage();
-      await deleteSnippetCommand(item.snippet.id, storage);
+      await deleteSnippetCommand(snippet.id, storage);
+      await loadSnippets();
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('snipify.editSnippet', async (item: SnippetTreeItem) => {
+    vscode.commands.registerCommand('snipify.editSnippet', async (snippet: Snippet) => {
       const storage = await getStorage();
-      await editSnippetCommand(item.snippet.id, {}, storage);
+      await editSnippetCommand(snippet.id, {}, storage);
+      await loadSnippets();
     })
   );
 
@@ -126,19 +139,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('snipify.refresh', async () => {
-      treeProvider.setLoading(true);
+      treeProvider.setAuth('loading');
+      setContext('snipify:authState', 'loading');
       try {
         const storage = await getStorage();
         const snippets = await storage.getAll();
-        treeProvider.refresh(snippets);
+        treeProvider.setSnippets(snippets);
+        setContext('snipify:authState', snippets.length === 0 ? 'empty' : 'ready');
       } catch (err) {
-        treeProvider.refresh([]);
+        treeProvider.setAuth('signed-out');
+        setContext('snipify:authState', 'signed-out');
         vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
       }
     })
   );
 
-  // On activation: restore status bar and load snippets if already logged in
   refreshStatusBar();
   loadSnippets();
 }

@@ -72,6 +72,23 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "snipify.snippetsView",
+        "contents": "Sign in with GitHub to sync your snippets.\n[$(account) Login with GitHub](command:snipify.login)",
+        "when": "snipify:authState == 'signed-out'"
+      },
+      {
+        "view": "snipify.snippetsView",
+        "contents": "$(sync~spin) Loading your snippets…",
+        "when": "snipify:authState == 'loading'"
+      },
+      {
+        "view": "snipify.snippetsView",
+        "contents": "No snippets yet.\nSelect code in the editor, right-click, and choose **Save Snippet**.\n[$(add) Save a Snippet](command:snipify.saveSnippet)",
+        "when": "snipify:authState == 'empty'"
+      }
+    ],
     "configuration": {
       "title": "Snipify",
       "properties": {
