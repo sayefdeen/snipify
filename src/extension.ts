@@ -3,13 +3,19 @@ import { ProviderType } from './models/User';
 import { Snippet } from './models/Snippet';
 import { AuthProviderFactory } from './auth/AuthProviderFactory';
 import { StorageFactory } from './storage/StorageFactory';
-import { SnippetTreeProvider } from './ui/SnippetTreeProvider';
+import { SnippetTreeProvider, SnippetNode } from './ui/SnippetTreeProvider';
 import { loginCommand } from './commands/login';
 import { saveSnippetCommand } from './commands/saveSnippet';
 import { insertSnippetCommand } from './commands/insertSnippet';
 import { deleteSnippetCommand } from './commands/deleteSnippet';
 import { editSnippetCommand } from './commands/editSnippet';
 import { SnippetQuickPick } from './ui/SnippetQuickPick';
+
+const PINNED_KEY = 'snipify.pinnedIds';
+
+function resolveSnippet(arg: Snippet | SnippetNode): Snippet {
+  return 'kind' in arg ? arg.snippet : arg;
+}
 
 function setContext(key: string, value: string): void {
   vscode.commands.executeCommand('setContext', key, value);
@@ -52,6 +58,17 @@ export function activate(context: vscode.ExtensionContext): void {
     return StorageFactory.create(providerType, token);
   };
 
+  const getPinnedIds = (): Set<string> =>
+    new Set(context.globalState.get<string[]>(PINNED_KEY, []));
+
+  const savePinnedIds = (ids: Set<string>): Thenable<void> =>
+    context.globalState.update(PINNED_KEY, [...ids]);
+
+  const applyPinned = (snippets: Snippet[]): Snippet[] => {
+    const ids = getPinnedIds();
+    return snippets.map((s) => ({ ...s, pinned: ids.has(s.id) }));
+  };
+
   const loadSnippets = async (): Promise<void> => {
     const loggedIn = await auth.isLoggedIn();
     if (!loggedIn) {
@@ -63,7 +80,7 @@ export function activate(context: vscode.ExtensionContext): void {
     setContext('snipify:authState', 'loading');
     try {
       const storage = await getStorage();
-      const snippets = await storage.getAll();
+      const snippets = applyPinned(await storage.getAll());
       treeProvider.setSnippets(snippets);
       setContext('snipify:authState', snippets.length === 0 ? 'empty' : 'ready');
     } catch {
@@ -101,13 +118,14 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('snipify.insertSnippet', async (snippet: Snippet) => {
-      await insertSnippetCommand(snippet);
+    vscode.commands.registerCommand('snipify.insertSnippet', async (arg: Snippet | SnippetNode) => {
+      await insertSnippetCommand(resolveSnippet(arg));
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('snipify.deleteSnippet', async (snippet: Snippet) => {
+    vscode.commands.registerCommand('snipify.deleteSnippet', async (arg: Snippet | SnippetNode) => {
+      const snippet = resolveSnippet(arg);
       const storage = await getStorage();
       await deleteSnippetCommand(snippet.id, storage);
       await loadSnippets();
@@ -115,7 +133,8 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('snipify.editSnippet', async (snippet: Snippet) => {
+    vscode.commands.registerCommand('snipify.editSnippet', async (arg: Snippet | SnippetNode) => {
+      const snippet = resolveSnippet(arg);
       const storage = await getStorage();
       await editSnippetCommand(snippet.id, {}, storage);
       await loadSnippets();
@@ -134,6 +153,43 @@ export function activate(context: vscode.ExtensionContext): void {
       } catch (err) {
         vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
       }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('snipify.pinSnippet', async (arg: Snippet | SnippetNode) => {
+      const ids = getPinnedIds();
+      ids.add(resolveSnippet(arg).id);
+      await savePinnedIds(ids);
+      await loadSnippets();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('snipify.unpinSnippet', async (arg: Snippet | SnippetNode) => {
+      const ids = getPinnedIds();
+      ids.delete(resolveSnippet(arg).id);
+      await savePinnedIds(ids);
+      await loadSnippets();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('snipify.filterSnippets', async () => {
+      const query = await vscode.window.showInputBox({
+        placeHolder: 'Filter by title, language, or tag…',
+        prompt: 'Leave empty to clear filter',
+      });
+      if (query === undefined) return;
+      treeProvider.setFilter(query);
+      setContext('snipify:filterActive', query.trim().length > 0 ? 'true' : '');
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('snipify.clearFilter', () => {
+      treeProvider.setFilter('');
+      setContext('snipify:filterActive', '');
     })
   );
 

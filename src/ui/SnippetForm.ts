@@ -62,10 +62,7 @@ export class SnippetForm {
   }
 
   private static getHtml(code: string, language: string): string {
-    const escapedCode = code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     return `<!DOCTYPE html>
 <html lang="en">

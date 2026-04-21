@@ -30,8 +30,8 @@
     "commands": [
       { "command": "snipify.saveSnippet", "title": "Snipify: Save Snippet" },
       { "command": "snipify.insertSnippet", "title": "Snipify: Insert Snippet" },
-      { "command": "snipify.deleteSnippet", "title": "Snipify: Delete Snippet" },
-      { "command": "snipify.editSnippet", "title": "Snipify: Edit Snippet" },
+      { "command": "snipify.deleteSnippet", "title": "Snipify: Delete Snippet", "icon": "$(trash)" },
+      { "command": "snipify.editSnippet", "title": "Snipify: Edit Snippet", "icon": "$(edit)" },
       { "command": "snipify.login", "title": "Snipify: Login with GitHub" },
       { "command": "snipify.logout", "title": "Snipify: Logout" },
       {
@@ -42,6 +42,26 @@
       {
         "command": "snipify.search",
         "title": "Snipify: Search Snippets"
+      },
+      {
+        "command": "snipify.pinSnippet",
+        "title": "Snipify: Pin Snippet",
+        "icon": "$(pinned)"
+      },
+      {
+        "command": "snipify.unpinSnippet",
+        "title": "Snipify: Unpin Snippet",
+        "icon": "$(pinned)"
+      },
+      {
+        "command": "snipify.filterSnippets",
+        "title": "Snipify: Filter Snippets",
+        "icon": "$(search)"
+      },
+      {
+        "command": "snipify.clearFilter",
+        "title": "Snipify: Clear Filter",
+        "icon": "$(search-stop)"
       }
     ],
     "menus": {
@@ -54,21 +74,41 @@
       ],
       "view/title": [
         {
+          "command": "snipify.clearFilter",
+          "when": "view == snipify.snippetsView && snipify:filterActive",
+          "group": "navigation@1"
+        },
+        {
+          "command": "snipify.filterSnippets",
+          "when": "view == snipify.snippetsView",
+          "group": "navigation@2"
+        },
+        {
           "command": "snipify.refresh",
           "when": "view == snipify.snippetsView",
-          "group": "navigation"
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
         {
-          "command": "snipify.editSnippet",
+          "command": "snipify.pinSnippet",
           "when": "view == snipify.snippetsView && viewItem == snippet",
-          "group": "snipify@1"
+          "group": "inline@1"
+        },
+        {
+          "command": "snipify.unpinSnippet",
+          "when": "view == snipify.snippetsView && viewItem == snippet.pinned",
+          "group": "inline@1"
+        },
+        {
+          "command": "snipify.editSnippet",
+          "when": "view == snipify.snippetsView && viewItem =~ /^snippet/",
+          "group": "inline@2"
         },
         {
           "command": "snipify.deleteSnippet",
-          "when": "view == snipify.snippetsView && viewItem == snippet",
-          "group": "snipify@2"
+          "when": "view == snipify.snippetsView && viewItem =~ /^snippet/",
+          "group": "inline@3"
         }
       ]
     },

@@ -5,25 +5,32 @@ export type GroupMode = 'recency' | 'language' | 'sections';
 export type AuthState = 'signed-out' | 'loading' | 'ready';
 
 export type SnippetNode = { kind: 'snippet'; snippet: Snippet };
-type GroupNode = { kind: 'group'; id: string; label: string; icon: string; children: SnippetNode[]; collapsed?: boolean };
+type GroupNode = {
+  kind: 'group';
+  id: string;
+  label: string;
+  icon: string;
+  children: SnippetNode[];
+  collapsed?: boolean;
+};
 type Node = SnippetNode | GroupNode;
 
 const LANG_ICON: Readonly<Record<string, { icon: string; color: string }>> = {
-  typescript:      { icon: 'symbol-class',     color: 'charts.blue'        },
-  javascript:      { icon: 'symbol-method',    color: 'charts.yellow'      },
-  typescriptreact: { icon: 'symbol-class',     color: 'charts.blue'        },
-  javascriptreact: { icon: 'symbol-method',    color: 'charts.yellow'      },
-  python:          { icon: 'symbol-namespace', color: 'charts.green'       },
-  go:              { icon: 'symbol-method',    color: 'charts.blue'        },
-  rust:            { icon: 'symbol-method',    color: 'charts.orange'      },
-  html:            { icon: 'code',             color: 'charts.orange'      },
-  css:             { icon: 'symbol-color',     color: 'charts.purple'      },
-  scss:            { icon: 'symbol-color',     color: 'charts.purple'      },
-  json:            { icon: 'json',             color: 'charts.yellow'      },
-  markdown:        { icon: 'markdown',         color: 'charts.foreground'  },
-  shellscript:     { icon: 'terminal',         color: 'charts.foreground'  },
-  sql:             { icon: 'symbol-property',  color: 'charts.purple'      },
-  yaml:            { icon: 'symbol-key',       color: 'charts.foreground'  },
+  typescript: { icon: 'symbol-class', color: 'charts.blue' },
+  javascript: { icon: 'symbol-method', color: 'charts.yellow' },
+  typescriptreact: { icon: 'symbol-class', color: 'charts.blue' },
+  javascriptreact: { icon: 'symbol-method', color: 'charts.yellow' },
+  python: { icon: 'symbol-namespace', color: 'charts.green' },
+  go: { icon: 'symbol-method', color: 'charts.blue' },
+  rust: { icon: 'symbol-method', color: 'charts.orange' },
+  html: { icon: 'code', color: 'charts.orange' },
+  css: { icon: 'symbol-color', color: 'charts.purple' },
+  scss: { icon: 'symbol-color', color: 'charts.purple' },
+  json: { icon: 'json', color: 'charts.yellow' },
+  markdown: { icon: 'markdown', color: 'charts.foreground' },
+  shellscript: { icon: 'terminal', color: 'charts.foreground' },
+  sql: { icon: 'symbol-property', color: 'charts.purple' },
+  yaml: { icon: 'symbol-key', color: 'charts.foreground' },
 };
 
 function iconFor(lang: string): vscode.ThemeIcon {
@@ -33,10 +40,10 @@ function iconFor(lang: string): vscode.ThemeIcon {
 
 function relTime(date: Date): string {
   const d = (Date.now() - date.getTime()) / 1000;
-  if (d < 60)      return 'just now';
-  if (d < 3600)    return `${Math.floor(d / 60)}m ago`;
-  if (d < 86400)   return `${Math.floor(d / 3600)}h ago`;
-  if (d < 604800)  return `${Math.floor(d / 86400)}d ago`;
+  if (d < 60) return 'just now';
+  if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+  if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
+  if (d < 604800) return `${Math.floor(d / 86400)}d ago`;
   return date.toLocaleDateString();
 }
 
@@ -61,9 +68,14 @@ function buildTooltip(s: Snippet): vscode.MarkdownString {
 function snippetItem(s: Snippet): vscode.TreeItem {
   const item = new vscode.TreeItem(s.title || 'Untitled', vscode.TreeItemCollapsibleState.None);
   item.iconPath = iconFor(s.language);
-  const tagStr = s.tags.length ? s.tags.slice(0, 3).map((t) => `#${t}`).join(' ') : '';
+  const tagStr = s.tags.length
+    ? s.tags
+        .slice(0, 3)
+        .map((t) => `#${t}`)
+        .join(' ')
+    : '';
   item.description = tagStr || s.language;
-  item.contextValue = 'snippet';
+  item.contextValue = s.pinned ? 'snippet.pinned' : 'snippet';
   item.tooltip = buildTooltip(s);
   item.command = { command: 'snipify.insertSnippet', title: 'Insert snippet', arguments: [s] };
   item.accessibilityInformation = {
@@ -116,7 +128,10 @@ export class SnippetTreeProvider implements vscode.TreeDataProvider<Node> {
 
   // kept for back-compat with existing extension.ts call sites
   setLoading(value: boolean): void {
-    if (value) { this.auth = 'loading'; this._onDidChange.fire(); }
+    if (value) {
+      this.auth = 'loading';
+      this._onDidChange.fire();
+    }
   }
 
   refresh(snippets: Snippet[]): void {
@@ -141,9 +156,12 @@ export class SnippetTreeProvider implements vscode.TreeDataProvider<Node> {
     const all = this.filtered();
     if (all.length === 0) return [];
     switch (this.mode) {
-      case 'recency':  return this.groupByRecency(all);
-      case 'language': return this.groupByLanguage(all);
-      case 'sections': return this.sectionLayout(all);
+      case 'recency':
+        return this.groupByRecency(all);
+      case 'language':
+        return this.groupByLanguage(all);
+      case 'sections':
+        return this.sectionLayout(all);
     }
   }
 
@@ -159,18 +177,36 @@ export class SnippetTreeProvider implements vscode.TreeDataProvider<Node> {
   }
 
   private sectionLayout(all: Snippet[]): Node[] {
-    const recent = [...all]
+    const pinned = all.filter((s) => s.pinned);
+    const unpinned = all.filter((s) => !s.pinned);
+    const recent = [...unpinned]
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .slice(0, 5);
     const nodes: Node[] = [];
+    if (pinned.length) {
+      nodes.push({
+        kind: 'group',
+        id: 'pinned',
+        label: 'Pinned',
+        icon: 'pinned',
+        children: pinned.map((s) => ({ kind: 'snippet', snippet: s })),
+      });
+    }
     if (recent.length) {
       nodes.push({
-        kind: 'group', id: 'recent', label: 'Recent', icon: 'history',
+        kind: 'group',
+        id: 'recent',
+        label: 'Recent',
+        icon: 'history',
         children: recent.map((s) => ({ kind: 'snippet', snippet: s })),
       });
     }
     nodes.push({
-      kind: 'group', id: 'all', label: 'All Snippets', icon: 'folder', collapsed: true,
+      kind: 'group',
+      id: 'all',
+      label: 'All Snippets',
+      icon: 'folder',
+      collapsed: true,
       children: all.map((s) => ({ kind: 'snippet', snippet: s })),
     });
     return nodes;
@@ -185,14 +221,17 @@ export class SnippetTreeProvider implements vscode.TreeDataProvider<Node> {
       (age < day ? bucket.today : age < 7 * day ? bucket.week : bucket.older).push(s);
     }
     const order: Array<[string, string, string]> = [
-      ['today', 'Today',     'clock'],
-      ['week',  'This week', 'history'],
-      ['older', 'Earlier',   'calendar'],
+      ['today', 'Today', 'clock'],
+      ['week', 'This week', 'history'],
+      ['older', 'Earlier', 'calendar'],
     ];
     return order
       .filter(([k]) => bucket[k].length > 0)
       .map(([k, label, icon]) => ({
-        kind: 'group' as const, id: k, label, icon,
+        kind: 'group' as const,
+        id: k,
+        label,
+        icon,
         children: bucket[k].map((s) => ({ kind: 'snippet' as const, snippet: s })),
       }));
   }
