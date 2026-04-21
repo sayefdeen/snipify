@@ -33,8 +33,18 @@ const LANG_ICON: Readonly<Record<string, { icon: string; color: string }>> = {
   yaml: { icon: 'symbol-key', color: 'charts.foreground' },
 };
 
-function iconFor(lang: string): vscode.ThemeIcon {
-  const meta = LANG_ICON[lang.toLowerCase()] ?? { icon: 'symbol-file', color: 'charts.foreground' };
+const SVG_LANGS = new Set([
+  'typescript', 'javascript', 'typescriptreact', 'javascriptreact',
+  'python', 'html', 'css', 'scss', 'go', 'rust',
+  'json', 'markdown', 'shellscript', 'sql', 'yaml', 'plaintext',
+]);
+
+function iconFor(lang: string, extensionUri: vscode.Uri): vscode.Uri | vscode.ThemeIcon {
+  const key = lang.toLowerCase();
+  if (SVG_LANGS.has(key)) {
+    return vscode.Uri.joinPath(extensionUri, 'assets', 'icons', `${key}.svg`);
+  }
+  const meta = LANG_ICON[key] ?? { icon: 'symbol-file', color: 'charts.foreground' };
   return new vscode.ThemeIcon(meta.icon, new vscode.ThemeColor(meta.color));
 }
 
@@ -65,9 +75,9 @@ function buildTooltip(s: Snippet): vscode.MarkdownString {
   return md;
 }
 
-function snippetItem(s: Snippet): vscode.TreeItem {
+function snippetItem(s: Snippet, extensionUri: vscode.Uri): vscode.TreeItem {
   const item = new vscode.TreeItem(s.title || 'Untitled', vscode.TreeItemCollapsibleState.None);
-  item.iconPath = iconFor(s.language);
+  item.iconPath = iconFor(s.language, extensionUri);
   const tagStr = s.tags.length
     ? s.tags
         .slice(0, 3)
@@ -105,6 +115,8 @@ export class SnippetTreeProvider implements vscode.TreeDataProvider<Node> {
   private mode: GroupMode = 'sections';
   private filterQuery = '';
 
+  constructor(private readonly extensionUri: vscode.Uri) {}
+
   setAuth(auth: AuthState): void {
     this.auth = auth;
     this._onDidChange.fire();
@@ -139,7 +151,7 @@ export class SnippetTreeProvider implements vscode.TreeDataProvider<Node> {
   }
 
   getTreeItem(node: Node): vscode.TreeItem {
-    return node.kind === 'snippet' ? snippetItem(node.snippet) : groupItem(node);
+    return node.kind === 'snippet' ? snippetItem(node.snippet, this.extensionUri) : groupItem(node);
   }
 
   getChildren(node?: Node): Node[] {

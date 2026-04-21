@@ -26,7 +26,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const providerType = (config.get<string>('provider') ?? 'github') as ProviderType;
 
   const auth = AuthProviderFactory.create(providerType, context.secrets);
-  const treeProvider = new SnippetTreeProvider();
+  const treeProvider = new SnippetTreeProvider(context.extensionUri);
 
   const treeView = vscode.window.createTreeView('snipify.snippetsView', {
     treeDataProvider: treeProvider,
