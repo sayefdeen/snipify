@@ -133,11 +133,6 @@ export class SnippetTreeProvider implements vscode.TreeDataProvider<Node> {
     this._onDidChange.fire();
   }
 
-  setFilter(q: string): void {
-    this.filterQuery = q.trim().toLowerCase();
-    this._onDidChange.fire();
-  }
-
   // kept for back-compat with existing extension.ts call sites
   setLoading(value: boolean): void {
     if (value) {
@@ -164,17 +159,9 @@ export class SnippetTreeProvider implements vscode.TreeDataProvider<Node> {
     return node.kind === 'group' ? node.children : [];
   }
 
-  private buildRoot(): Node[] {
-    const all = this.filtered();
-    if (all.length === 0) return [];
-    switch (this.mode) {
-      case 'recency':
-        return this.groupByRecency(all);
-      case 'language':
-        return this.groupByLanguage(all);
-      case 'sections':
-        return this.sectionLayout(all);
-    }
+  setFilter(q: string): void {
+    this.filterQuery = q.trim().toLowerCase();
+    this._onDidChange.fire();
   }
 
   private filtered(): Snippet[] {
@@ -186,6 +173,19 @@ export class SnippetTreeProvider implements vscode.TreeDataProvider<Node> {
         s.language.toLowerCase().includes(q) ||
         s.tags.some((t) => t.toLowerCase().includes(q))
     );
+  }
+
+  private buildRoot(): Node[] {
+    const all = this.filtered();
+    if (all.length === 0) return [];
+    switch (this.mode) {
+      case 'recency':
+        return this.groupByRecency(all);
+      case 'language':
+        return this.groupByLanguage(all);
+      case 'sections':
+        return this.sectionLayout(all);
+    }
   }
 
   private sectionLayout(all: Snippet[]): Node[] {
