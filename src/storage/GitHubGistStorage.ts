@@ -19,7 +19,6 @@ interface GistResponse {
 interface GistMetadata {
   language: string;
   tags: string[];
-  createdAt: string;
 }
 
 export class GitHubGistStorage implements ISnippetStorage {
@@ -35,28 +34,39 @@ export class GitHubGistStorage implements ISnippetStorage {
   }
 
   private mapGistToSnippet(gist: GistResponse): Snippet | null {
-    let meta: GistMetadata;
-    try {
-      meta = JSON.parse(gist.description) as GistMetadata;
-    } catch {
-      return null; // not a Snipify gist
-    }
-
     const file = Object.values(gist.files)[0];
     if (!file) {
       return null;
     }
 
+    const match = gist.description?.match(/^Language: (\S+)(?:, Tags: (.+))?$/);
+    const language = match ? match[1] : this.inferLanguage(file.filename);
+    const tags = match && match[2] ? match[2].split(', ').map((t) => t.trim()) : [];
+
     return {
       id: gist.id,
       title: file.filename,
       code: file.content,
-      language: meta.language ?? 'plaintext',
-      tags: meta.tags ?? [],
-      createdAt: new Date(meta.createdAt ?? gist.created_at),
+      language,
+      tags,
+      createdAt: new Date(gist.created_at),
       updatedAt: new Date(gist.updated_at),
       provider: 'github',
     };
+  }
+
+  private inferLanguage(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const map: Record<string, string> = {
+      ts: 'typescript', tsx: 'typescriptreact',
+      js: 'javascript', jsx: 'javascriptreact',
+      py: 'python', rb: 'ruby', go: 'go',
+      rs: 'rust', java: 'java', cs: 'csharp',
+      cpp: 'cpp', c: 'c', html: 'html',
+      css: 'css', scss: 'scss', json: 'json',
+      md: 'markdown', sh: 'shellscript', yml: 'yaml', yaml: 'yaml',
+    };
+    return (ext && map[ext]) ? map[ext] : 'plaintext';
   }
 
   async getAll(): Promise<Snippet[]> {
@@ -68,6 +78,9 @@ export class GitHubGistStorage implements ISnippetStorage {
 
     const snippets: Snippet[] = [];
     for (const gist of gists) {
+      if (Object.keys(gist.files).length === 0) {
+        continue;
+      }
       const full = await this.getById(gist.id);
       if (full) {
         snippets.push(full);
@@ -80,11 +93,10 @@ export class GitHubGistStorage implements ISnippetStorage {
     const meta: GistMetadata = {
       language: snippet.language,
       tags: snippet.tags,
-      createdAt: new Date().toISOString(),
     };
 
     const body = {
-      description: JSON.stringify(meta),
+      description: `Language: ${meta.language}${meta.tags.length ? `, Tags: ${meta.tags.join(', ')}` : ''}`,
       public: false,
       files: {
         [snippet.title]: { content: snippet.code },
@@ -115,7 +127,6 @@ export class GitHubGistStorage implements ISnippetStorage {
     const meta: GistMetadata = {
       language: merged.language,
       tags: merged.tags,
-      createdAt: merged.createdAt.toISOString(),
     };
 
     const files: Record<string, { content?: string } | null> = {};
@@ -128,7 +139,7 @@ export class GitHubGistStorage implements ISnippetStorage {
     }
 
     const body = {
-      description: JSON.stringify(meta),
+      description: `Language: ${meta.language}${meta.tags.length ? `, Tags: ${meta.tags.join(', ')}` : ''}`,
       files,
     };
 
