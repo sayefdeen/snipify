@@ -1,24 +1,47 @@
+import * as vscode from 'vscode';
 import { IAuthProvider } from './IAuthProvider';
 import { User } from '../models/User';
+import { storeToken, getToken, deleteToken } from '../utils/tokenStorage';
 
 export class GitHubAuthProvider implements IAuthProvider {
+  constructor(private readonly secrets: vscode.SecretStorage) {}
+
   async login(): Promise<User> {
-    throw new Error('Not implemented yet — coming in Phase 2');
+    const session = await vscode.authentication.getSession('github', ['gist', 'read:user'], {
+      createIfNone: true,
+    });
+    await storeToken(this.secrets, session.accessToken);
+    return {
+      id: session.account.id,
+      username: session.account.label,
+      provider: 'github',
+    };
   }
 
   async logout(): Promise<void> {
-    throw new Error('Not implemented yet — coming in Phase 2');
+    await deleteToken(this.secrets);
   }
 
   async getToken(): Promise<string | null> {
-    throw new Error('Not implemented yet — coming in Phase 2');
+    return getToken(this.secrets);
   }
 
   async isLoggedIn(): Promise<boolean> {
-    throw new Error('Not implemented yet — coming in Phase 2');
+    const token = await getToken(this.secrets);
+    return token !== null;
   }
 
   async getUser(): Promise<User | null> {
-    throw new Error('Not implemented yet — coming in Phase 2');
+    const session = await vscode.authentication.getSession('github', ['gist', 'read:user'], {
+      createIfNone: false,
+    });
+    if (!session) {
+      return null;
+    }
+    return {
+      id: session.account.id,
+      username: session.account.label,
+      provider: 'github',
+    };
   }
 }

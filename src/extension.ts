@@ -2,43 +2,64 @@ import * as vscode from 'vscode';
 import { ProviderType } from './models/User';
 import { AuthProviderFactory } from './auth/AuthProviderFactory';
 import { StorageFactory } from './storage/StorageFactory';
-import { SnippetTreeProvider } from './ui/SnippetTreeProvider';
+import { SnippetTreeProvider, SnippetTreeItem } from './ui/SnippetTreeProvider';
 import { loginCommand } from './commands/login';
 import { saveSnippetCommand } from './commands/saveSnippet';
 import { insertSnippetCommand } from './commands/insertSnippet';
 import { deleteSnippetCommand } from './commands/deleteSnippet';
 import { editSnippetCommand } from './commands/editSnippet';
-import { SnippetTreeItem } from './ui/SnippetTreeProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = vscode.workspace.getConfiguration('snipify');
   const providerType = (config.get<string>('provider') ?? 'github') as ProviderType;
 
-  const auth = AuthProviderFactory.create(providerType);
+  const auth = AuthProviderFactory.create(providerType, context.secrets);
   const treeProvider = new SnippetTreeProvider();
 
   const treeView = vscode.window.createTreeView('snipify.snippetsView', {
     treeDataProvider: treeProvider,
   });
 
-  const getStorage = async () => {
+  const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBar.command = 'snipify.login';
+  statusBar.text = '$(account) Snipify';
+  statusBar.tooltip = 'Click to log in with GitHub';
+  statusBar.show();
+
+  const refreshStatusBar = async (): Promise<void> => {
+    const user = await auth.getUser();
+    if (user) {
+      statusBar.text = `$(account) Snipify: ${user.username}`;
+      statusBar.tooltip = `Logged in as ${user.username}`;
+    } else {
+      statusBar.text = '$(account) Snipify';
+      statusBar.tooltip = 'Click to log in with GitHub';
+    }
+  };
+
+  const getStorage = async (): Promise<ReturnType<typeof StorageFactory.create>> => {
     const token = await auth.getToken();
     if (!token) {
-      throw new Error('Not logged in');
+      throw new Error('Not logged in. Run "Snipify: Login with GitHub" first.');
     }
     return StorageFactory.create(providerType, token);
   };
 
-  context.subscriptions.push(treeView);
+  context.subscriptions.push(treeView, statusBar);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('snipify.login', () => loginCommand(auth))
+    vscode.commands.registerCommand('snipify.login', async () => {
+      await loginCommand(auth);
+      await refreshStatusBar();
+    })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('snipify.logout', async () => {
       await auth.logout();
       treeProvider.refresh([]);
+      await refreshStatusBar();
+      vscode.window.showInformationMessage('Snipify: Logged out');
     })
   );
 
@@ -76,6 +97,9 @@ export function activate(context: vscode.ExtensionContext): void {
       treeProvider.refresh(snippets);
     })
   );
+
+  // Restore status bar on activation if already logged in
+  refreshStatusBar();
 }
 
 export function deactivate(): void {}

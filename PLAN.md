@@ -345,11 +345,11 @@ All commands are registered in `extension.ts` using `vscode.commands.registerCom
 - [x] Register extension entry point in `extension.ts`
 - [x] Confirm extension loads in VS Code without errors
 
-### Phase 2 — GitHub Auth
-- [ ] Implement `GitHubAuthProvider` using `vscode.authentication`
-- [ ] Implement `tokenStorage.ts` using VS Code `SecretStorage`
-- [ ] Implement `login` and `logout` commands
-- [ ] Show logged-in username in the sidebar or status bar
+### Phase 2 — GitHub Auth ✅
+- [x] Implement `GitHubAuthProvider` using `vscode.authentication`
+- [x] Implement `tokenStorage.ts` using VS Code `SecretStorage`
+- [x] Implement `login` and `logout` commands
+- [x] Show logged-in username in the sidebar or status bar
 - [ ] Test: login flow works end to end
 
 ### Phase 3 — GitHub Gists Storage
