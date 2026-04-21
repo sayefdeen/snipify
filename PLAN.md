@@ -352,9 +352,9 @@ All commands are registered in `extension.ts` using `vscode.commands.registerCom
 - [x] Show logged-in username in the sidebar or status bar
 - [ ] Test: login flow works end to end
 
-### Phase 3 — GitHub Gists Storage
-- [ ] Implement `GitHubGistStorage` with all `ISnippetStorage` methods
-- [ ] Implement `mapGistToSnippet()` mapping function
+### Phase 3 — GitHub Gists Storage ✅
+- [x] Implement `GitHubGistStorage` with all `ISnippetStorage` methods
+- [x] Implement `mapGistToSnippet()` mapping function
 - [ ] Test: save a snippet → appears as a Gist on github.com
 - [ ] Test: fetch all snippets → returns correct list
 
