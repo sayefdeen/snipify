@@ -1,0 +1,76 @@
+{
+  "name": "snipify",
+  "displayName": "Snipify",
+  "description": "Save, manage, and reuse code snippets synced to GitHub Gists",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "snipify",
+          "title": "Snipify",
+          "icon": "assets/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "snipify": [
+        {
+          "id": "snipify.snippetsView",
+          "name": "My Snippets"
+        }
+      ]
+    },
+    "commands": [
+      { "command": "snipify.saveSnippet", "title": "Snipify: Save Snippet" },
+      { "command": "snipify.insertSnippet", "title": "Snipify: Insert Snippet" },
+      { "command": "snipify.deleteSnippet", "title": "Snipify: Delete Snippet" },
+      { "command": "snipify.editSnippet", "title": "Snipify: Edit Snippet" },
+      { "command": "snipify.login", "title": "Snipify: Login with GitHub" },
+      { "command": "snipify.logout", "title": "Snipify: Logout" },
+      { "command": "snipify.refresh", "title": "Snipify: Refresh Snippets" }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "snipify.saveSnippet",
+          "when": "editorHasSelection",
+          "group": "snipify"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Snipify",
+      "properties": {
+        "snipify.provider": {
+          "type": "string",
+          "default": "github",
+          "enum": ["github", "gitlab", "bitbucket"],
+          "description": "The platform to use for storing snippets"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "compile": "tsc --noEmit",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0"
+  }
+}
