@@ -6,6 +6,7 @@ import { StorageFactory } from './storage/StorageFactory';
 import { SidebarViewProvider } from './ui/SidebarViewProvider';
 import { loginCommand } from './commands/login';
 import { saveSnippetCommand } from './commands/saveSnippet';
+import { SnippetForm } from './ui/SnippetForm';
 import { insertSnippetCommand } from './commands/insertSnippet';
 import { deleteSnippetCommand } from './commands/deleteSnippet';
 import { editSnippetCommand } from './commands/editSnippet';
@@ -173,6 +174,27 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         const snippet = await SnippetQuickPick.show(currentSnippets);
         if (snippet) await insertSnippetCommand(snippet);
+      } catch (err) {
+        vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('snipify.newSnippet', async () => {
+      const loggedIn = await auth.isLoggedIn();
+      if (!loggedIn) {
+        const action = await vscode.window.showWarningMessage('Snipify: You need to log in first.', 'Login');
+        if (action === 'Login') await vscode.commands.executeCommand('snipify.login');
+        return;
+      }
+      try {
+        const storage = await getStorage();
+        SnippetForm.showNew(context, async (data) => {
+          await storage.save({ ...data, provider: 'github' });
+          vscode.window.showInformationMessage(`Snipify: "${data.title}" saved!`);
+          await loadSnippets();
+        });
       } catch (err) {
         vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
       }

@@ -37,6 +37,11 @@
         "command": "snipify.refresh",
         "title": "Snipify: Refresh Snippets",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "snipify.newSnippet",
+        "title": "Snipify: New Snippet",
+        "icon": "$(add)"
       }
     ],
     "menus": {
@@ -49,9 +54,14 @@
       ],
       "view/title": [
         {
+          "command": "snipify.newSnippet",
+          "when": "view == snipify.mainView",
+          "group": "navigation@1"
+        },
+        {
           "command": "snipify.refresh",
           "when": "view == snipify.mainView",
-          "group": "navigation"
+          "group": "navigation@2"
         }
       ]
     },

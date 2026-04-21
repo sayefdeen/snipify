@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- < bracket -->
+  <path stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+    d="M8 7L3 12L8 17"/>
+  <!-- > bracket -->
+  <path stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+    d="M16 7L21 12L16 17"/>
+  <!-- snippet lines -->
+  <path stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"
+    d="M11 10h4"/>
+  <path stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"
+    d="M11 13h2.5"/>
+</svg>

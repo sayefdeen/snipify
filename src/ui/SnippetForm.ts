@@ -6,6 +6,7 @@ interface FormSubmitMessage {
   title: string;
   tags: string;
   language: string;
+  code: string;
 }
 
 interface FormCancelMessage {
@@ -21,14 +22,31 @@ export class SnippetForm {
     language: string,
     onSubmit: (data: Pick<Snippet, 'title' | 'tags' | 'language' | 'code'>) => Promise<void>
   ): void {
+    SnippetForm._open(context, code, language, false, onSubmit);
+  }
+
+  static showNew(
+    context: vscode.ExtensionContext,
+    onSubmit: (data: Pick<Snippet, 'title' | 'tags' | 'language' | 'code'>) => Promise<void>
+  ): void {
+    SnippetForm._open(context, '', 'plaintext', true, onSubmit);
+  }
+
+  private static _open(
+    context: vscode.ExtensionContext,
+    code: string,
+    language: string,
+    editable: boolean,
+    onSubmit: (data: Pick<Snippet, 'title' | 'tags' | 'language' | 'code'>) => Promise<void>
+  ): void {
     const panel = vscode.window.createWebviewPanel(
       'snipifyForm',
-      'Save Snippet',
+      editable ? 'New Snippet' : 'Save Snippet',
       vscode.ViewColumn.Beside,
       { enableScripts: true, retainContextWhenHidden: false }
     );
 
-    panel.webview.html = SnippetForm.getHtml(code, language);
+    panel.webview.html = SnippetForm.getHtml(code, language, editable);
 
     panel.webview.onDidReceiveMessage(
       async (message: WebviewMessage) => {
@@ -48,7 +66,7 @@ export class SnippetForm {
               title: message.title,
               tags,
               language: message.language,
-              code,
+              code: message.code,
             });
             panel.dispose();
           } catch (err) {
@@ -61,7 +79,7 @@ export class SnippetForm {
     );
   }
 
-  private static getHtml(code: string, language: string): string {
+  private static getHtml(code: string, language: string, editable: boolean): string {
     const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     return `<!DOCTYPE html>
@@ -113,6 +131,23 @@ export class SnippetForm {
       white-space: pre-wrap;
       word-break: break-all;
     }
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      padding: 8px;
+      margin-bottom: 16px;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, #555);
+      border-radius: 2px;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: var(--vscode-editor-font-size, 13px);
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    textarea:focus {
+      outline: 1px solid var(--vscode-focusBorder);
+    }
     .actions {
       display: flex;
       gap: 8px;
@@ -153,8 +188,12 @@ export class SnippetForm {
   <label for="language">Language</label>
   <input id="language" type="text" value="${language}" />
 
-  <label>Preview</label>
-  <pre>${escapedCode}</pre>
+  ${editable
+      ? `<label for="code">Code *</label>
+  <textarea id="code" placeholder="Paste or type your snippet here\u2026" spellcheck="false"></textarea>`
+      : `<label>Preview</label>
+  <pre>${escapedCode}</pre>`
+    }
 
   <div class="actions">
     <button class="btn-primary" onclick="submit()">Save</button>
@@ -166,15 +205,16 @@ export class SnippetForm {
 
     function submit() {
       const title = document.getElementById('title').value.trim();
-      if (!title) {
-        document.getElementById('title').focus();
-        return;
-      }
+      if (!title) { document.getElementById('title').focus(); return; }
+      const codeEl = document.getElementById('code');
+      const code = codeEl ? codeEl.value : '${escapedCode}';
+      if (!code.trim()) { codeEl && codeEl.focus(); return; }
       vscode.postMessage({
         command: 'submit',
         title,
         tags: document.getElementById('tags').value,
         language: document.getElementById('language').value.trim() || '${language}',
+        code,
       });
     }
 
