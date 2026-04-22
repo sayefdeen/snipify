@@ -30,6 +30,8 @@
     },
     "commands": [
       { "command": "snipify.saveSnippet", "title": "Snipify: Save Snippet" },
+      { "command": "snipify.exportSnippets", "title": "Snipify: Export Snippets" },
+      { "command": "snipify.importSnippets", "title": "Snipify: Import Snippets" },
       { "command": "snipify.login", "title": "Snipify: Login with GitHub" },
       { "command": "snipify.logout", "title": "Snipify: Logout" },
       { "command": "snipify.search", "title": "Snipify: Search Snippets" },
@@ -42,6 +44,11 @@
         "command": "snipify.newSnippet",
         "title": "Snipify: New Snippet",
         "icon": "$(add)"
+      },
+      {
+        "command": "snipify.snippetMenu",
+        "title": "Snipify: More Actions",
+        "icon": "$(ellipsis)"
       }
     ],
     "menus": {
@@ -62,9 +69,21 @@
           "command": "snipify.refresh",
           "when": "view == snipify.mainView",
           "group": "navigation@2"
+        },
+        {
+          "command": "snipify.snippetMenu",
+          "when": "view == snipify.mainView",
+          "group": "navigation@3"
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "snipify.search",
+        "key": "ctrl+shift+s",
+        "mac": "cmd+shift+s"
+      }
+    ],
     "configuration": {
       "title": "Snipify",
       "properties": {

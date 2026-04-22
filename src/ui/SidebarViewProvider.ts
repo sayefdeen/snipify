@@ -9,6 +9,7 @@ export type SidebarMessage =
   | { type: 'delete'; id: string }
   | { type: 'pin'; id: string }
   | { type: 'unpin'; id: string }
+  | { type: 'copyLink'; id: string }
   | { type: 'refresh' }
   | { type: 'login' };
 
@@ -19,6 +20,8 @@ interface SnippetData {
   tags: string[];
   updatedAt: number;
   pinned: boolean;
+  url?: string;
+  usageCount: number;
 }
 
 const LANGS = [
@@ -34,6 +37,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   private _auth: AuthState = 'loading';
   private _snippets: Snippet[] = [];
   private _pinnedIds: Set<string> = new Set();
+  private _usageCounts: Record<string, number> = {};
 
   private readonly _onMessage = new vscode.EventEmitter<SidebarMessage>();
   readonly onMessage = this._onMessage.event;
@@ -58,10 +62,11 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     this._push();
   }
 
-  setSnippets(snippets: Snippet[], pinnedIds: Set<string>): void {
+  setSnippets(snippets: Snippet[], pinnedIds: Set<string>, usageCounts: Record<string, number> = {}): void {
     this._auth = 'ready';
     this._snippets = snippets;
     this._pinnedIds = pinnedIds;
+    this._usageCounts = usageCounts;
     this._push();
   }
 
@@ -74,6 +79,8 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       tags: s.tags,
       updatedAt: s.updatedAt.getTime(),
       pinned: this._pinnedIds.has(s.id),
+      url: s.url,
+      usageCount: this._usageCounts[s.id] ?? 0,
     }));
     this._view.webview.postMessage({ type: 'update', auth: this._auth, snippets: data });
   }
@@ -89,13 +96,13 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const iconMap: Record<string, string> = {};
     for (const lang of LANGS) {
       iconMap[lang] = webview
-        .asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'assets', 'icons', lang + '.svg'))
+        .asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'assets', 'icons', `${lang}.svg`))
         .toString();
     }
 
     const iconsJson = JSON.stringify(iconMap);
 
-    return `<!DOCTYPE html>
+    return /* html */`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -132,6 +139,8 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
 .snippet-actions{display:none;align-items:center;gap:1px;flex-shrink:0}
 .snippet-row:hover .snippet-actions{display:flex}
 .snippet-row:hover .snippet-desc{display:none}
+.snippet-row:hover .usage-count{display:none}
+.usage-count{font-size:10px;color:var(--vscode-descriptionForeground);opacity:.55;flex-shrink:0;line-height:1}
 .action-btn{background:none;border:none;cursor:pointer;padding:2px;color:var(--vscode-icon-foreground);display:flex;align-items:center;border-radius:3px;opacity:.75}
 .action-btn:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground)}
 
@@ -149,7 +158,7 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
         <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.85-3.85a1.007 1.007 0 0 0-.018-.017zm-5.242 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
       </svg>
     </span>
-    <input id="search-input" type="text" placeholder="Search snippets\u2026" autocomplete="off" spellcheck="false"/>
+    <input id="search-input" type="text" placeholder="Search snippets…" autocomplete="off" spellcheck="false"/>
     <button id="clear-btn" class="hidden" title="Clear">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
@@ -176,7 +185,7 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
   }
 
   function iconSrc(lang) {
-    return ICONS[lang.toLowerCase()] || FALLBACK;
+    return ICONS[(lang || '').toLowerCase()] || FALLBACK;
   }
 
   function filtered(list) {
@@ -189,37 +198,40 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
     });
   }
 
-  var PIN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 4v8l2 2v2h-6v6l-1 1-1-1v-6H5v-2l2-2V4H6V2h12v2h-1z"/></svg>';
+  var PIN_SVG  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 4v8l2 2v2h-6v6l-1 1-1-1v-6H5v-2l2-2V4H6V2h12v2h-1z"/></svg>';
   var EDIT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
-  var DEL_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+  var DEL_SVG  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+  var LINK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>';
+  var CHEVRON  = '<svg class="chevron" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4 6l4 4 4-4H4z"/></svg>';
 
   function rowHtml(s) {
     var desc = s.tags.length ? s.tags.slice(0,3).map(function(t){return '#'+t;}).join(' ') : s.language;
-    var pinAction = s.pinned
-      ? '<button class="action-btn" title="Unpin" data-action="unpin" data-id="' + esc(s.id) + '">' + PIN_SVG + '</button>'
-      : '<button class="action-btn" title="Pin" data-action="pin" data-id="' + esc(s.id) + '" style="opacity:.4">' + PIN_SVG + '</button>';
-    return '<div class="snippet-row" data-id="' + esc(s.id) + '">'
-      + '<img class="lang-icon" src="' + iconSrc(s.language) + '" alt=""/>'
-      + '<span class="snippet-title" title="' + esc(s.title) + '">' + esc(s.title) + '</span>'
-      + '<span class="snippet-desc">' + esc(desc) + '</span>'
-      + '<div class="snippet-actions">'
-      + pinAction
-      + '<button class="action-btn" title="Edit" data-action="edit" data-id="' + esc(s.id) + '">' + EDIT_SVG + '</button>'
-      + '<button class="action-btn" title="Delete" data-action="delete" data-id="' + esc(s.id) + '">' + DEL_SVG + '</button>'
-      + '</div>'
-      + '</div>';
+    var pinBtn = s.pinned
+      ? '<button class="action-btn" title="Unpin" data-action="unpin" data-id="'+esc(s.id)+'">'+PIN_SVG+'</button>'
+      : '<button class="action-btn" title="Pin"   data-action="pin"   data-id="'+esc(s.id)+'" style="opacity:.4">'+PIN_SVG+'</button>';
+    var countBadge = s.usageCount > 0
+      ? '<span class="usage-count">'+s.usageCount+'</span>'
+      : '';
+    return '<div class="snippet-row" data-id="'+esc(s.id)+'">'
+      +'<img class="lang-icon" src="'+iconSrc(s.language)+'" alt=""/>'
+      +'<span class="snippet-title" title="'+esc(s.title)+'">'+esc(s.title)+'</span>'
+      +countBadge
+      +'<span class="snippet-desc">'+esc(desc)+'</span>'
+      +'<div class="snippet-actions">'+pinBtn
+      +(s.url ? '<button class="action-btn" title="Copy Gist URL" data-action="copyLink" data-id="'+esc(s.id)+'">'+LINK_SVG+'</button>' : '')
+      +'<button class="action-btn" title="Edit"   data-action="edit"   data-id="'+esc(s.id)+'">'+EDIT_SVG+'</button>'
+      +'<button class="action-btn" title="Delete" data-action="delete" data-id="'+esc(s.id)+'">'+DEL_SVG+'</button>'
+      +'</div></div>';
   }
-
-  var CHEVRON = '<svg class="chevron" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4 6l4 4 4-4H4z"/></svg>';
 
   function groupHtml(id, label, items, defaultCollapsed) {
     var isCollapsed = collapsed[id] !== undefined ? collapsed[id] : defaultCollapsed;
-    return '<div class="group' + (isCollapsed ? ' collapsed' : '') + '" id="grp-' + id + '">'
-      + '<div class="group-header" data-group="' + id + '">'
-      + CHEVRON + esc(label) + '<span class="group-count">' + items.length + '</span>'
-      + '</div>'
-      + '<div class="group-items">' + items.map(rowHtml).join('') + '</div>'
-      + '</div>';
+    return '<div class="group'+(isCollapsed?' collapsed':'')+'" id="grp-'+id+'">'
+      +'<div class="group-header" data-group="'+id+'">'
+      +CHEVRON+esc(label)+'<span class="group-count">'+items.length+'</span>'
+      +'</div>'
+      +'<div class="group-items">'+items.map(rowHtml).join('')+'</div>'
+      +'</div>';
   }
 
   function render() {
@@ -227,11 +239,11 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
 
     if (auth === 'signed-out') {
       el.innerHTML = '<div class="state-wrap">Sign in with GitHub to sync your snippets.'
-        + '<br/><button class="state-btn" data-action="login">Login with GitHub</button></div>';
+        +'<br/><button class="state-btn" data-action="login">Login with GitHub</button></div>';
       return;
     }
     if (auth === 'loading') {
-      el.innerHTML = '<div class="state-wrap">Loading snippets\u2026</div>';
+      el.innerHTML = '<div class="state-wrap">Loading snippets…</div>';
       return;
     }
 
@@ -242,21 +254,20 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
       return;
     }
     if (!all.length) {
-      el.innerHTML = '<div class="state-wrap">No results for \u201c' + esc(filter) + '\u201d</div>';
+      el.innerHTML = '<div class="state-wrap">No results for “'+esc(filter)+'”</div>';
       return;
     }
+    if (filter) { el.innerHTML = all.map(rowHtml).join(''); return; }
 
-    if (filter) {
-      el.innerHTML = all.map(rowHtml).join('');
-      return;
-    }
-
-    var pinned = all.filter(function(s){ return s.pinned; });
+    var pinned   = all.filter(function(s){ return s.pinned; });
     var unpinned = all.filter(function(s){ return !s.pinned; });
-    var recent = unpinned.slice().sort(function(a,b){ return b.updatedAt - a.updatedAt; }).slice(0,5);
+    var recent   = unpinned.slice().sort(function(a,b){ return b.updatedAt - a.updatedAt; }).slice(0,5);
+    var mostUsed = all.filter(function(s){ return s.usageCount > 0; })
+                      .sort(function(a,b){ return b.usageCount - a.usageCount; }).slice(0,5);
     var html = '';
-    if (pinned.length) html += groupHtml('pinned', 'Pinned', pinned, false);
-    if (recent.length) html += groupHtml('recent', 'Recent', recent, false);
+    if (pinned.length)   html += groupHtml('pinned',    'Pinned',     pinned,   false);
+    if (mostUsed.length) html += groupHtml('mostUsed',  'Most Used',  mostUsed, false);
+    if (recent.length)   html += groupHtml('recent',    'Recent',     recent,   false);
     html += groupHtml('all', 'All Snippets', all, true);
     el.innerHTML = html;
   }
@@ -265,15 +276,15 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
     var hdr = e.target.closest('[data-group]');
     if (hdr) {
       var gid = hdr.dataset.group;
-      var grp = document.getElementById('grp-' + gid);
+      var grp = document.getElementById('grp-'+gid);
       if (grp) collapsed[gid] = grp.classList.toggle('collapsed');
       return;
     }
     var btn = e.target.closest('[data-action]');
     if (btn) {
-      var action = btn.dataset.action;
-      var id = btn.dataset.id;
-      vscode.postMessage(id ? { type: action, id: id } : { type: action });
+      vscode.postMessage(btn.dataset.id
+        ? { type: btn.dataset.action, id: btn.dataset.id }
+        : { type: btn.dataset.action });
       return;
     }
     var row = e.target.closest('.snippet-row');
@@ -281,7 +292,7 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
   });
 
   var searchInput = document.getElementById('search-input');
-  var clearBtn = document.getElementById('clear-btn');
+  var clearBtn    = document.getElementById('clear-btn');
 
   searchInput.addEventListener('input', function() {
     filter = searchInput.value;
@@ -290,11 +301,9 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
   });
 
   clearBtn.addEventListener('click', function() {
-    filter = '';
-    searchInput.value = '';
+    filter = ''; searchInput.value = '';
     clearBtn.classList.add('hidden');
-    searchInput.focus();
-    render();
+    searchInput.focus(); render();
   });
 
   window.addEventListener('message', function(e) {

@@ -8,9 +8,8 @@ export async function insertSnippetCommand(snippet: Snippet): Promise<void> {
     return;
   }
 
-  await editor.edit((editBuilder) => {
-    for (const selection of editor.selections) {
-      editBuilder.insert(selection.active, snippet.code);
-    }
-  });
+  await editor.insertSnippet(
+    new vscode.SnippetString(snippet.code),
+    editor.selections.map((s) => s.active),
+  );
 }

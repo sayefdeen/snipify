@@ -11,6 +11,7 @@ interface GistFile {
 interface GistResponse {
   id: string;
   description: string;
+  html_url: string;
   files: Record<string, GistFile>;
   created_at: string;
   updated_at: string;
@@ -52,6 +53,7 @@ export class GitHubGistStorage implements ISnippetStorage {
       createdAt: new Date(gist.created_at),
       updatedAt: new Date(gist.updated_at),
       provider: 'github',
+      url: gist.html_url,
     };
   }
 

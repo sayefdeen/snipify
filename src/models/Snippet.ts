@@ -9,5 +9,6 @@ export interface Snippet {
   createdAt: Date;
   updatedAt: Date;
   provider: ProviderType;
+  url?: string;
   pinned?: boolean;
 }

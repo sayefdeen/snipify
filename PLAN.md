@@ -170,10 +170,22 @@ snipify/
 - [x] **README** — features, getting started, commands table
 - [x] **New Snippet form** — textarea for code input when no selection exists
 
-### Phase 9 — Future (V2)
+### Phase 9 — UX Hardening ✅
+- [x] **Snippet templates** — insert via `vscode.SnippetString` so `$1` / `${1:placeholder}` placeholders are tab-stoppable
+- [x] **Default keybinding** — `Ctrl+Shift+S` / `Cmd+Shift+S` for QuickPick insert, remappable in VS Code
+
+### Phase 10 — Shareability & Portability ✅
+- [x] **Share as link** — "Copy Gist URL" link button on each snippet row (copies `html_url` to clipboard)
+- [x] **Export snippets** — `Snipify: Export Snippets` command exports to `.code-snippets` (VS Code native) or JSON
+- [x] **Import snippets** — `Snipify: Import Snippets` command imports from `.code-snippets` or Snipify JSON with a progress notification
+
+### Phase 11 — Usage Intelligence ✅
+- [x] **Usage tracking** — local counter per snippet ID stored in `globalState`, incremented on every insert
+- [x] **Usage-based grouping** — "Most Used" group (top 5 by count) appears between Pinned and Recent; hidden until at least one snippet has been inserted
+
+### Phase 12 — Future (V2+)
 - [ ] GitLab Snippets storage implementation
-- [ ] Bitbucket storage implementation
-- [ ] Snippet sharing (public Gist option)
+- [ ] Snippet sharing (public Gist toggle)
 - [ ] Import existing Gists by URL
-- [ ] Keyboard shortcut for insert
-- [ ] Snippet categories / folders
+- [ ] Snippet categories → better tag UX (multi-select filter, tag autocomplete) instead of folder tree
+- [ ] GitHub Repo as storage backend (unlocks org permissions, PR-based review, branch-based snippet sets)

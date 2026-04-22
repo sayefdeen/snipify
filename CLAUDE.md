@@ -21,9 +21,11 @@ Snipify is a VS Code extension. All platform-specific concerns (auth and storage
 
 ```
 extension.ts
-  └── AuthProviderFactory  →  IAuthProvider  ←  GitHubAuthProvider (V1)
+  └── AuthProviderFactory  →  IAuthProvider   ←  GitHubAuthProvider (V1)
   └── StorageFactory       →  ISnippetStorage ←  GitHubGistStorage  (V1)
-  └── SnippetTreeProvider  (sidebar tree view)
+  └── SidebarViewProvider  (WebView sidebar — search, grouped list, usage counts)
+  └── SnippetForm          (WebView panel — save / new snippet)
+  └── SnippetQuickPick     (command palette fuzzy search, Ctrl+Shift+S)
   └── commands/*           (thin wrappers — business logic lives in providers)
 ```
 
@@ -42,7 +44,14 @@ Tokens flow through `src/utils/tokenStorage.ts` which wraps VS Code `SecretStora
 
 ### GitHub Gists storage mapping
 
-Each snippet = one private Gist. The Gist filename = snippet title; the Gist description = JSON string `{ language, tags, createdAt }`. The `mapGistToSnippet()` method in `GitHubGistStorage` owns this mapping.
+Each snippet = one private Gist. The Gist filename = snippet title; the Gist description = readable string `Language: x, Tags: y`. The `mapGistToSnippet()` method in `GitHubGistStorage` owns this mapping. `html_url` from the Gist API is stored as `Snippet.url` and exposed as a "Copy Gist URL" action in the sidebar.
+
+### globalState keys
+
+| Key | Type | Purpose |
+|---|---|---|
+| `snipify.pinnedIds` | `string[]` | IDs of pinned snippets |
+| `snipify.usageCounts` | `Record<string, number>` | Per-snippet insert counters |
 
 ### Stub providers
 
@@ -54,3 +63,5 @@ Each snippet = one private Gist. The Gist filename = snippet title; the Gist des
 - Always use `AuthProviderFactory` / `StorageFactory` to obtain providers
 - Auth tokens only via `SecretStorage` (never `globalState` or workspace config)
 - TypeScript strict mode is on — no `any`, no implicit returns
+- `IAuthProvider` and `ISnippetStorage` interfaces must never change — new providers implement them as-is
+- Snippet inserts go through `editor.insertSnippet(new vscode.SnippetString(...))` so tab stops work

@@ -11,8 +11,11 @@ import { insertSnippetCommand } from './commands/insertSnippet';
 import { deleteSnippetCommand } from './commands/deleteSnippet';
 import { editSnippetCommand } from './commands/editSnippet';
 import { SnippetQuickPick } from './ui/SnippetQuickPick';
+import { exportSnippetsCommand } from './commands/exportSnippets';
+import { importSnippetsCommand } from './commands/importSnippets';
 
 const PINNED_KEY = 'snipify.pinnedIds';
+const USAGE_KEY  = 'snipify.usageCounts';
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = vscode.workspace.getConfiguration('snipify');
@@ -57,6 +60,15 @@ export function activate(context: vscode.ExtensionContext): void {
   const savePinnedIds = (ids: Set<string>): Thenable<void> =>
     context.globalState.update(PINNED_KEY, [...ids]);
 
+  const getUsageCounts = (): Record<string, number> =>
+    context.globalState.get<Record<string, number>>(USAGE_KEY, {});
+
+  const incrementUsage = (id: string): Thenable<void> => {
+    const counts = getUsageCounts();
+    counts[id] = (counts[id] ?? 0) + 1;
+    return context.globalState.update(USAGE_KEY, counts);
+  };
+
   const loadSnippets = async (): Promise<void> => {
     const loggedIn = await auth.isLoggedIn();
     if (!loggedIn) {
@@ -67,7 +79,7 @@ export function activate(context: vscode.ExtensionContext): void {
     try {
       const storage = await getStorage();
       currentSnippets = await storage.getAll();
-      sidebar.setSnippets(currentSnippets, getPinnedIds());
+      sidebar.setSnippets(currentSnippets, getPinnedIds(), getUsageCounts());
     } catch {
       sidebar.setAuth('signed-out');
     }
@@ -88,7 +100,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
         case 'insert': {
           const s = currentSnippets.find((x) => x.id === msg.id);
-          if (s) await insertSnippetCommand(s);
+          if (s) {
+            await insertSnippetCommand(s);
+            await incrementUsage(s.id);
+            sidebar.setSnippets(currentSnippets, getPinnedIds(), getUsageCounts());
+          }
           break;
         }
 
@@ -124,7 +140,7 @@ export function activate(context: vscode.ExtensionContext): void {
           const ids = getPinnedIds();
           ids.add(msg.id);
           await savePinnedIds(ids);
-          sidebar.setSnippets(currentSnippets, ids);
+          sidebar.setSnippets(currentSnippets, ids, getUsageCounts());
           break;
         }
 
@@ -132,7 +148,16 @@ export function activate(context: vscode.ExtensionContext): void {
           const ids = getPinnedIds();
           ids.delete(msg.id);
           await savePinnedIds(ids);
-          sidebar.setSnippets(currentSnippets, ids);
+          sidebar.setSnippets(currentSnippets, ids, getUsageCounts());
+          break;
+        }
+
+        case 'copyLink': {
+          const s = currentSnippets.find((x) => x.id === msg.id);
+          if (s?.url) {
+            await vscode.env.clipboard.writeText(s.url);
+            vscode.window.showInformationMessage(`Snipify: Gist URL copied to clipboard`);
+          }
           break;
         }
       }
@@ -195,6 +220,53 @@ export function activate(context: vscode.ExtensionContext): void {
           vscode.window.showInformationMessage(`Snipify: "${data.title}" saved!`);
           await loadSnippets();
         });
+      } catch (err) {
+        vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('snipify.snippetMenu', async () => {
+      const pick = await vscode.window.showQuickPick(
+        [
+          { label: '$(export) Export Snippets', action: 'export' },
+          { label: '$(import) Import Snippets', action: 'import' },
+        ],
+        { placeHolder: 'Snipify actions' }
+      );
+      if (pick?.action === 'export') {
+        await exportSnippetsCommand(currentSnippets);
+      } else if (pick?.action === 'import') {
+        try {
+          const storage = await getStorage();
+          const count = await importSnippetsCommand(storage, providerType);
+          if (count > 0) {
+            vscode.window.showInformationMessage(`Snipify: Imported ${count} snippet${count === 1 ? '' : 's'}.`);
+            await loadSnippets();
+          }
+        } catch (err) {
+          vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
+        }
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('snipify.exportSnippets', async () => {
+      await exportSnippetsCommand(currentSnippets);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('snipify.importSnippets', async () => {
+      try {
+        const storage = await getStorage();
+        const count = await importSnippetsCommand(storage, providerType);
+        if (count > 0) {
+          vscode.window.showInformationMessage(`Snipify: Imported ${count} snippet${count === 1 ? '' : 's'}.`);
+          await loadSnippets();
+        }
       } catch (err) {
         vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
       }
