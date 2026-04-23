@@ -15,7 +15,7 @@ interface SnipifyJsonEntry {
   code: string;
 }
 
-function parseVSCodeSnippets(raw: unknown): Array<{ title: string; language: string; tags: string[]; code: string }> {
+export function parseVSCodeSnippets(raw: unknown): Array<{ title: string; language: string; tags: string[]; code: string }> {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new Error('Not a valid .code-snippets file');
   }
@@ -32,7 +32,7 @@ function parseVSCodeSnippets(raw: unknown): Array<{ title: string; language: str
   });
 }
 
-function parseSnipifyJson(raw: unknown): Array<{ title: string; language: string; tags: string[]; code: string }> {
+export function parseSnipifyJson(raw: unknown): Array<{ title: string; language: string; tags: string[]; code: string }> {
   if (!Array.isArray(raw)) {
     throw new Error('Not a valid Snipify JSON export (expected an array)');
   }

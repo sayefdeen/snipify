@@ -22,6 +22,7 @@ The core user flow is:
 - **Storage V1**: GitHub Gists API (REST)
 - **Package Manager**: npm
 - **Bundler**: esbuild
+- **Tests**: Jest + ts-jest
 
 ---
 
@@ -48,11 +49,14 @@ extension.ts
 snipify/
 ├── package.json
 ├── tsconfig.json
+├── jest.config.js
 ├── esbuild.js
 ├── README.md
+├── CHANGELOG.md
 ├── PLAN.md
 ├── assets/
 │   ├── icon.svg                        # Activity bar icon (monochrome)
+│   ├── icon.png                        # Marketplace listing icon (128×128)
 │   └── icons/                          # Language icons (SVG, path-based)
 │       ├── typescript.svg
 │       ├── javascript.svg
@@ -66,6 +70,8 @@ snipify/
 │
 └── src/
     ├── extension.ts                    # Entry point — wires everything together
+    ├── __mocks__/
+    │   └── vscode.ts                   # vscode stub for unit tests
     ├── models/
     │   ├── Snippet.ts
     │   └── User.ts
@@ -84,16 +90,17 @@ snipify/
     ├── ui/
     │   ├── SidebarViewProvider.ts      # Full WebView sidebar (search + list)
     │   ├── SnippetForm.ts              # WebView panel (save / new snippet)
-    │   ├── SnippetQuickPick.ts         # Command palette search
-    │   ├── SnippetTreeProvider.ts      # Legacy tree provider (kept, unused)
-    │   └── SearchViewProvider.ts       # Legacy search provider (kept, unused)
+    │   └── SnippetQuickPick.ts         # Command palette search
     ├── commands/
     │   ├── saveSnippet.ts
     │   ├── insertSnippet.ts
     │   ├── deleteSnippet.ts
     │   ├── editSnippet.ts
+    │   ├── exportSnippets.ts
+    │   ├── importSnippets.ts
     │   └── login.ts
     └── utils/
+        ├── classifyError.ts
         ├── languageDetector.ts
         └── tokenStorage.ts
 ```
@@ -107,6 +114,8 @@ snipify/
 - Auth tokens only via `SecretStorage` (never `globalState` or workspace config)
 - TypeScript strict mode — no `any`, no implicit returns
 - Stub providers (GitLab, Bitbucket) must remain — factories reference them
+- Both webviews (SidebarViewProvider, SnippetForm) must include a CSP meta tag
+- Error objects thrown from storage must include `status` and `resetAt` so `classifyError` can use them
 
 ---
 
@@ -190,12 +199,23 @@ snipify/
 - [x] **First-run onboarding** — inline walkthrough card (3-step checklist: select, save, name); dismissible; self-removes after first snippet saved; persisted in `globalState`
 - [x] **Offline read cache** — after every successful fetch, snippets are written to `<globalStorageUri>/snippets-cache.json`; on failure the cache is loaded and the amber offline chip is shown; survives VS Code restarts
 - [x] **Provider migration warning** — modal fires when `snipify.provider` changes in Settings; offers Export first / Switch anyway / Cancel; reverting settings if cancelled
-- [x] **Welcome states redesign** — logged-out (GitHub icon + two buttons), loading (skeleton rows with decreasing opacity + "Syncing…" footer), empty (sparkle icon + instructional body + save button); all match design spec
+- [x] **Welcome states redesign** — logged-out (GitHub icon + sign-in button), loading (skeleton rows + "Syncing…" footer), empty (sparkle icon + instructional body + save button)
 - [x] **Status bar logout bug** — `getUser()` now checks `SecretStorage` before calling `getSession()`; status bar correctly resets to logged-out state on logout
 
-### Phase 13 — Future (V2+)
+### Phase 13 — Publish Readiness ✅
+- [x] **Dead code removal** — deleted orphaned `SearchViewProvider`, `SnippetTreeProvider`, `LocalSnippetStorage`
+- [x] **SnippetForm CSP** — added `Content-Security-Policy` meta tag to the save/new snippet webview panel
+- [x] **Rate-limit header** — `GitHubGistStorage.getAll()` parses `X-RateLimit-Reset` and attaches `status` + `resetAt` to thrown errors so the banner countdown works
+- [x] **package.json metadata** — added `publisher`, `author`, `license`, `repository`, `keywords`, `categories`
+- [x] **SnippetForm JS injection fix** — replaced unsafe `'${escapedCode}'` string embedding with `JSON.stringify` so code containing single quotes / backslashes no longer breaks the form
+- [x] **Unit tests** — Jest + ts-jest; `classifyError` extracted to `src/utils/classifyError.ts`; `parseVSCodeSnippets` / `parseSnipifyJson` exported; 26 tests passing
+- [x] **Concurrent mutation guard** — `_busy` flag in `extension.ts` prevents overlapping edit/delete/save operations from racing `loadSnippets()`
+- [x] **CHANGELOG.md** — added for Marketplace requirement
+- [x] **Marketplace icon** — `assets/icon.png` (128×128) added; `package.json` updated to reference it
+
+### Phase 14 — Future (V2+)
 - [ ] GitLab Snippets storage implementation
 - [ ] Snippet sharing (public Gist toggle)
 - [ ] Import existing Gists by URL
-- [ ] Snippet categories → better tag UX (multi-select filter, tag autocomplete) instead of folder tree
-- [ ] GitHub Repo as storage backend (unlocks org permissions, PR-based review, branch-based snippet sets)
+- [ ] Snippet categories → better tag UX (multi-select filter, tag autocomplete)
+- [ ] GitHub Repo as storage backend

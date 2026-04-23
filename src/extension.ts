@@ -3,7 +3,8 @@ import { ProviderType } from './models/User';
 import { Snippet } from './models/Snippet';
 import { AuthProviderFactory } from './auth/AuthProviderFactory';
 import { StorageFactory } from './storage/StorageFactory';
-import { SidebarViewProvider, ErrorKind } from './ui/SidebarViewProvider';
+import { SidebarViewProvider } from './ui/SidebarViewProvider';
+import { classifyError } from './utils/classifyError';
 import { loginCommand } from './commands/login';
 import { saveSnippetCommand } from './commands/saveSnippet';
 import { SnippetForm } from './ui/SnippetForm';
@@ -38,6 +39,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(statusBar);
 
   let currentSnippets: Snippet[] = [];
+  let _busy = false;
 
   const refreshStatusBar = async (): Promise<void> => {
     const user = await auth.getUser();
@@ -93,21 +95,7 @@ export function activate(context: vscode.ExtensionContext): void {
     return context.globalState.update(USAGE_KEY, counts);
   };
 
-  const classifyError = (err: unknown): { kind: ErrorKind; resetAt?: number } => {
-    const msg = (err as Error)?.message ?? '';
-    const status = (err as { status?: number })?.status;
-    if (status === 401 || msg.includes('401') || msg.toLowerCase().includes('unauthorized')) {
-      return { kind: 'token-expired' };
-    }
-    if (status === 403 && (msg.includes('scope') || msg.toLowerCase().includes('permission'))) {
-      return { kind: 'scope' };
-    }
-    if (status === 403 || msg.includes('rate limit') || msg.includes('429')) {
-      const resetAt = (err as { resetAt?: number })?.resetAt;
-      return { kind: 'rate-limit', resetAt };
-    }
-    return { kind: 'unreachable' };
-  };
+
 
   const loadSnippets = async (): Promise<void> => {
     const loggedIn = await auth.isLoggedIn();
@@ -163,28 +151,36 @@ export function activate(context: vscode.ExtensionContext): void {
         }
 
         case 'edit': {
+          if (_busy) break;
           const s = currentSnippets.find((x) => x.id === msg.id);
           if (s) {
+            _busy = true;
             try {
               const storage = await getStorage();
               await editSnippetCommand(s.id, {}, storage);
               await loadSnippets();
             } catch (err) {
               vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
+            } finally {
+              _busy = false;
             }
           }
           break;
         }
 
         case 'delete': {
+          if (_busy) break;
           const s = currentSnippets.find((x) => x.id === msg.id);
           if (s) {
+            _busy = true;
             try {
               const storage = await getStorage();
               await deleteSnippetCommand(s.id, storage);
               await loadSnippets();
             } catch (err) {
               vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
+            } finally {
+              _busy = false;
             }
           }
           break;
@@ -252,12 +248,16 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('snipify.saveSnippet', async () => {
+      if (_busy) return;
+      _busy = true;
       try {
         const storage = await getStorage();
         await saveSnippetCommand(context, auth, storage);
         await loadSnippets();
       } catch (err) {
         vscode.window.showErrorMessage(`Snipify: ${(err as Error).message}`);
+      } finally {
+        _busy = false;
       }
     })
   );

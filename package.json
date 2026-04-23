@@ -3,21 +3,28 @@
   "displayName": "Snipify",
   "description": "Save, manage, and reuse code snippets synced to GitHub Gists",
   "version": "0.0.1",
-  "publisher": "snipify",
+  "publisher": "srawad",
   "author": {
     "name": "Saif Alrawad",
     "email": "sayefdeen.alrawad@gmail.com"
   },
-  "license": "MIT",
-  "repository": {
+"repository": {
     "type": "git",
     "url": "https://github.com/sayefdeen/snipify"
   },
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Snippets", "Other"],
-  "keywords": ["snippets", "gist", "github", "productivity"],
+  "categories": [
+    "Snippets",
+    "Other"
+  ],
+  "keywords": [
+    "snippets",
+    "gist",
+    "github",
+    "productivity"
+  ],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
@@ -40,12 +47,30 @@
       ]
     },
     "commands": [
-      { "command": "snipify.saveSnippet", "title": "Snipify: Save Snippet" },
-      { "command": "snipify.exportSnippets", "title": "Snipify: Export Snippets" },
-      { "command": "snipify.importSnippets", "title": "Snipify: Import Snippets" },
-      { "command": "snipify.login", "title": "Snipify: Login with GitHub" },
-      { "command": "snipify.logout", "title": "Snipify: Logout" },
-      { "command": "snipify.search", "title": "Snipify: Search Snippets" },
+      {
+        "command": "snipify.saveSnippet",
+        "title": "Snipify: Save Snippet"
+      },
+      {
+        "command": "snipify.exportSnippets",
+        "title": "Snipify: Export Snippets"
+      },
+      {
+        "command": "snipify.importSnippets",
+        "title": "Snipify: Import Snippets"
+      },
+      {
+        "command": "snipify.login",
+        "title": "Snipify: Login with GitHub"
+      },
+      {
+        "command": "snipify.logout",
+        "title": "Snipify: Logout"
+      },
+      {
+        "command": "snipify.search",
+        "title": "Snipify: Search Snippets"
+      },
       {
         "command": "snipify.refresh",
         "title": "Snipify: Refresh Snippets",
@@ -101,7 +126,11 @@
         "snipify.provider": {
           "type": "string",
           "default": "github",
-          "enum": ["github", "gitlab", "bitbucket"],
+          "enum": [
+            "github",
+            "gitlab",
+            "bitbucket"
+          ],
           "description": "The platform to use for storing snippets"
         }
       }
@@ -112,15 +141,19 @@
     "build": "node esbuild.js",
     "watch": "node esbuild.js --watch",
     "compile": "tsc --noEmit",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint src --ext ts",
+    "test": "jest"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
-    "typescript": "^5.3.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "esbuild": "^0.20.0",
     "eslint": "^8.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0"
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
+    "typescript": "^5.3.0"
   }
 }
