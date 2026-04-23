@@ -3,7 +3,7 @@ import { ProviderType } from './models/User';
 import { Snippet } from './models/Snippet';
 import { AuthProviderFactory } from './auth/AuthProviderFactory';
 import { StorageFactory } from './storage/StorageFactory';
-import { SidebarViewProvider } from './ui/SidebarViewProvider';
+import { SidebarViewProvider, ErrorKind } from './ui/SidebarViewProvider';
 import { loginCommand } from './commands/login';
 import { saveSnippetCommand } from './commands/saveSnippet';
 import { SnippetForm } from './ui/SnippetForm';
@@ -14,8 +14,10 @@ import { SnippetQuickPick } from './ui/SnippetQuickPick';
 import { exportSnippetsCommand } from './commands/exportSnippets';
 import { importSnippetsCommand } from './commands/importSnippets';
 
-const PINNED_KEY = 'snipify.pinnedIds';
-const USAGE_KEY  = 'snipify.usageCounts';
+const PINNED_KEY     = 'snipify.pinnedIds';
+const USAGE_KEY      = 'snipify.usageCounts';
+const ONBOARDING_KEY = 'snipify.onboardingDone';
+const CACHE_FILE     = 'snippets-cache.json';
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = vscode.workspace.getConfiguration('snipify');
@@ -63,10 +65,48 @@ export function activate(context: vscode.ExtensionContext): void {
   const getUsageCounts = (): Record<string, number> =>
     context.globalState.get<Record<string, number>>(USAGE_KEY, {});
 
+  const cacheUri = vscode.Uri.joinPath(context.globalStorageUri, CACHE_FILE);
+
+  const writeCache = async (snippets: Snippet[]): Promise<void> => {
+    try {
+      await vscode.workspace.fs.createDirectory(context.globalStorageUri);
+      const payload = JSON.stringify(snippets.map((s) => ({ ...s, createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString() })));
+      await vscode.workspace.fs.writeFile(cacheUri, Buffer.from(payload, 'utf8'));
+    } catch {
+      // non-fatal — cache write failures are silent
+    }
+  };
+
+  const readCache = async (): Promise<Snippet[]> => {
+    try {
+      const raw = await vscode.workspace.fs.readFile(cacheUri);
+      const parsed = JSON.parse(Buffer.from(raw).toString('utf8')) as Array<Snippet & { createdAt: string; updatedAt: string }>;
+      return parsed.map((s) => ({ ...s, createdAt: new Date(s.createdAt), updatedAt: new Date(s.updatedAt) }));
+    } catch {
+      return [];
+    }
+  };
+
   const incrementUsage = (id: string): Thenable<void> => {
     const counts = getUsageCounts();
     counts[id] = (counts[id] ?? 0) + 1;
     return context.globalState.update(USAGE_KEY, counts);
+  };
+
+  const classifyError = (err: unknown): { kind: ErrorKind; resetAt?: number } => {
+    const msg = (err as Error)?.message ?? '';
+    const status = (err as { status?: number })?.status;
+    if (status === 401 || msg.includes('401') || msg.toLowerCase().includes('unauthorized')) {
+      return { kind: 'token-expired' };
+    }
+    if (status === 403 && (msg.includes('scope') || msg.toLowerCase().includes('permission'))) {
+      return { kind: 'scope' };
+    }
+    if (status === 403 || msg.includes('rate limit') || msg.includes('429')) {
+      const resetAt = (err as { resetAt?: number })?.resetAt;
+      return { kind: 'rate-limit', resetAt };
+    }
+    return { kind: 'unreachable' };
   };
 
   const loadSnippets = async (): Promise<void> => {
@@ -79,9 +119,23 @@ export function activate(context: vscode.ExtensionContext): void {
     try {
       const storage = await getStorage();
       currentSnippets = await storage.getAll();
+      sidebar.clearError();
+      sidebar.clearOffline();
+      const onboardingDone = context.globalState.get<boolean>(ONBOARDING_KEY, false);
+      sidebar.setOnboarding(!onboardingDone && currentSnippets.length === 0);
       sidebar.setSnippets(currentSnippets, getPinnedIds(), getUsageCounts());
-    } catch {
-      sidebar.setAuth('signed-out');
+      await writeCache(currentSnippets);
+    } catch (err) {
+      const { kind, resetAt } = classifyError(err);
+      sidebar.setError(kind, resetAt);
+      const cached = currentSnippets.length > 0 ? currentSnippets : await readCache();
+      if (cached.length > 0) {
+        currentSnippets = cached;
+        sidebar.setOffline(Date.now());
+        sidebar.setSnippets(cached, getPinnedIds(), getUsageCounts());
+      } else {
+        sidebar.setAuth('ready');
+      }
     }
   };
 
@@ -160,6 +214,24 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           break;
         }
+
+        case 'use-local':
+          vscode.window.showInformationMessage('Local-only storage is coming in a future version of Snipify.');
+          break;
+
+        case 'saveSnippet':
+          await vscode.commands.executeCommand('snipify.saveSnippet');
+          break;
+
+        case 'dismiss-banner':
+          sidebar.clearError();
+          sidebar.clearOffline();
+          break;
+
+        case 'dismiss-onboarding':
+          await context.globalState.update(ONBOARDING_KEY, true);
+          sidebar.setOnboarding(false);
+          break;
       }
     })
   );
@@ -276,6 +348,30 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('snipify.refresh', async () => {
       await loadSnippets();
+    })
+  );
+
+  // Provider migration warning — prompt before the switch takes effect
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(async (e) => {
+      if (!e.affectsConfiguration('snipify.provider')) return;
+      const newProvider = vscode.workspace.getConfiguration('snipify').get<string>('provider') ?? 'github';
+      if (newProvider === providerType) return;
+      const count = currentSnippets.length;
+      const countLabel = count > 0 ? `Your ${count} current snippet${count === 1 ? '' : 's'} will stay on the old provider — they won't copy over.` : '';
+      const choice = await vscode.window.showWarningMessage(
+        `Switch snippet provider to ${newProvider}?`,
+        { modal: true, detail: `${countLabel} Snipify will show an empty list until you save something new, or switch back.\n\nTip: export your snippets first so you can re-import later.` },
+        'Export first…',
+        'Switch anyway',
+        'Cancel'
+      );
+      if (choice === 'Export first…') {
+        await exportSnippetsCommand(currentSnippets);
+      } else if (choice !== 'Switch anyway') {
+        // Revert the setting change
+        await vscode.workspace.getConfiguration('snipify').update('provider', providerType, vscode.ConfigurationTarget.Global);
+      }
     })
   );
 

@@ -182,8 +182,18 @@ snipify/
 ### Phase 11 — Usage Intelligence ✅
 - [x] **Usage tracking** — local counter per snippet ID stored in `globalState`, incremented on every insert
 - [x] **Usage-based grouping** — "Most Used" group (top 5 by count) appears between Pinned and Recent; hidden until at least one snippet has been inserted
+- [x] **Time-based grouping** — replaced flat "Recent + All Snippets" with Today / This Week / This Month / Earlier buckets; Earlier is collapsed by default
+- [x] **Hover preview card** — fixed-position overlay card on snippet hover (500ms delay); shows language icon, tags, 12-line code preview, and relative timestamp; isolated from list DOM to avoid render interference
 
-### Phase 12 — Future (V2+)
+### Phase 12 — Pre-publish Hardening ✅
+- [x] **Error banners** — compact amber/red strip above the list for all 4 failure cases (unreachable, rate-limited with countdown, token-expired, missing scope); list always stays visible; each banner has a primary action and a dismiss ✕
+- [x] **First-run onboarding** — inline walkthrough card (3-step checklist: select, save, name); dismissible; self-removes after first snippet saved; persisted in `globalState`
+- [x] **Offline read cache** — after every successful fetch, snippets are written to `<globalStorageUri>/snippets-cache.json`; on failure the cache is loaded and the amber offline chip is shown; survives VS Code restarts
+- [x] **Provider migration warning** — modal fires when `snipify.provider` changes in Settings; offers Export first / Switch anyway / Cancel; reverting settings if cancelled
+- [x] **Welcome states redesign** — logged-out (GitHub icon + two buttons), loading (skeleton rows with decreasing opacity + "Syncing…" footer), empty (sparkle icon + instructional body + save button); all match design spec
+- [x] **Status bar logout bug** — `getUser()` now checks `SecretStorage` before calling `getSession()`; status bar correctly resets to logged-out state on logout
+
+### Phase 13 — Future (V2+)
 - [ ] GitLab Snippets storage implementation
 - [ ] Snippet sharing (public Gist toggle)
 - [ ] Import existing Gists by URL

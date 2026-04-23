@@ -32,12 +32,12 @@ export class GitHubAuthProvider implements IAuthProvider {
   }
 
   async getUser(): Promise<User | null> {
+    const token = await getToken(this.secrets);
+    if (!token) return null;
     const session = await vscode.authentication.getSession('github', ['gist', 'read:user'], {
       createIfNone: false,
     });
-    if (!session) {
-      return null;
-    }
+    if (!session) return null;
     return {
       id: session.account.id,
       username: session.account.label,
