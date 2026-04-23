@@ -281,14 +281,31 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
 
     var pinned   = all.filter(function(s){ return s.pinned; });
     var unpinned = all.filter(function(s){ return !s.pinned; });
-    var recent   = unpinned.slice().sort(function(a,b){ return b.updatedAt - a.updatedAt; }).slice(0,5);
     var mostUsed = all.filter(function(s){ return s.usageCount > 0; })
                       .sort(function(a,b){ return b.usageCount - a.usageCount; }).slice(0,5);
+
+    var now   = Date.now();
+    var DAY   = 86400000;
+    var WEEK  = 7  * DAY;
+    var MONTH = 30 * DAY;
+    var unpinned = all.filter(function(s){ return !s.pinned; })
+                      .slice().sort(function(a,b){ return b.updatedAt - a.updatedAt; });
+    var buckets = { today: [], week: [], month: [], earlier: [] };
+    unpinned.forEach(function(s) {
+      var age = now - s.updatedAt;
+      if      (age < DAY)   buckets.today.push(s);
+      else if (age < WEEK)  buckets.week.push(s);
+      else if (age < MONTH) buckets.month.push(s);
+      else                  buckets.earlier.push(s);
+    });
+
     var html = '';
-    if (pinned.length)   html += groupHtml('pinned',    'Pinned',     pinned,   false);
-    if (mostUsed.length) html += groupHtml('mostUsed',  'Most Used',  mostUsed, false);
-    if (recent.length)   html += groupHtml('recent',    'Recent',     recent,   false);
-    html += groupHtml('all', 'All Snippets', all, true);
+    if (pinned.length)          html += groupHtml('pinned',   'Pinned',      pinned,           false);
+    if (mostUsed.length)        html += groupHtml('mostUsed', 'Most Used',   mostUsed,         false);
+    if (buckets.today.length)   html += groupHtml('today',    'Today',       buckets.today,    false);
+    if (buckets.week.length)    html += groupHtml('week',     'This Week',   buckets.week,     false);
+    if (buckets.month.length)   html += groupHtml('month',    'This Month',  buckets.month,    false);
+    if (buckets.earlier.length) html += groupHtml('earlier',  'Earlier',     buckets.earlier,  true);
     el.innerHTML = html;
   }
 
