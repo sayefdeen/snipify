@@ -22,6 +22,7 @@ interface SnippetData {
   pinned: boolean;
   url?: string;
   usageCount: number;
+  codePreview: string;
 }
 
 const LANGS = [
@@ -81,6 +82,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
       pinned: this._pinnedIds.has(s.id),
       url: s.url,
       usageCount: this._usageCounts[s.id] ?? 0,
+      codePreview: s.code.split('\n').slice(0, 12).join('\n'),
     }));
     this._view.webview.postMessage({ type: 'update', auth: this._auth, snippets: data });
   }
@@ -147,6 +149,14 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
 .state-wrap{padding:24px 16px 8px;text-align:center;color:var(--vscode-descriptionForeground);font-size:12px;line-height:1.6}
 .state-btn{display:inline-block;margin-top:10px;padding:4px 14px;background:var(--vscode-button-background);color:var(--vscode-button-foreground);border:none;border-radius:2px;cursor:pointer;font-size:12px;font-family:var(--vscode-font-family)}
 .state-btn:hover{background:var(--vscode-button-hoverBackground)}
+
+#hover-card{display:none;position:fixed;left:8px;right:8px;z-index:200;background:var(--vscode-editorHoverWidget-background,var(--vscode-editor-background));border:1px solid var(--vscode-editorHoverWidget-border,var(--vscode-widget-border,#454545));border-radius:3px;padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none}
+#hc-header{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+#hc-icon{width:14px;height:14px;flex-shrink:0;object-fit:contain}
+#hc-title{font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--vscode-editorHoverWidget-foreground,var(--vscode-foreground))}
+#hc-tags{font-size:11px;color:var(--vscode-descriptionForeground);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#hc-code{margin:0;padding:5px 7px;background:var(--vscode-textCodeBlock-background,var(--vscode-editor-background));border-radius:2px;font-family:var(--vscode-editor-font-family,monospace);font-size:11px;line-height:1.5;overflow:hidden;white-space:pre;max-height:150px;color:var(--vscode-editor-foreground,var(--vscode-foreground))}
+#hc-meta{font-size:10px;color:var(--vscode-descriptionForeground);margin-top:5px;opacity:.7}
 </style>
 </head>
 <body>
@@ -168,6 +178,16 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
 </div>
 
 <div id="content"></div>
+
+<div id="hover-card">
+  <div id="hc-header">
+    <img id="hc-icon" src="" alt=""/>
+    <span id="hc-title"></span>
+  </div>
+  <div id="hc-tags"></div>
+  <pre id="hc-code"></pre>
+  <div id="hc-meta"></div>
+</div>
 
 <script>
 (function() {
@@ -271,6 +291,74 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
     html += groupHtml('all', 'All Snippets', all, true);
     el.innerHTML = html;
   }
+
+  var hoverCard    = document.getElementById('hover-card');
+  var hcIcon       = document.getElementById('hc-icon');
+  var hcTitle      = document.getElementById('hc-title');
+  var hcTags       = document.getElementById('hc-tags');
+  var hcCode       = document.getElementById('hc-code');
+  var hcMeta       = document.getElementById('hc-meta');
+  var hoverTimer   = null;
+  var currentHoverId = null;
+
+  function relTimeMs(ms) {
+    var d = (Date.now() - ms) / 1000;
+    if (d < 60) return 'just now';
+    if (d < 3600) return Math.floor(d/60)+'m ago';
+    if (d < 86400) return Math.floor(d/3600)+'h ago';
+    if (d < 604800) return Math.floor(d/86400)+'d ago';
+    return new Date(ms).toLocaleDateString();
+  }
+
+  function showHoverCard(s, row) {
+    hcIcon.src   = iconSrc(s.language);
+    hcTitle.textContent = s.title || 'Untitled';
+    hcTags.textContent  = s.tags.length ? s.tags.map(function(t){return '#'+t;}).join(' ') : s.language;
+    hcCode.textContent  = s.codePreview || '';
+    hcMeta.textContent  = 'Updated ' + relTimeMs(s.updatedAt) + ' · ' + s.language;
+
+    var rect = row.getBoundingClientRect();
+    var spaceBelow = window.innerHeight - rect.bottom;
+    hoverCard.style.display = 'block';
+    var cardH = hoverCard.offsetHeight;
+    hoverCard.style.display = 'none';
+
+    if (spaceBelow >= cardH + 6 || spaceBelow >= rect.top) {
+      hoverCard.style.top    = (rect.bottom + 4) + 'px';
+      hoverCard.style.bottom = 'auto';
+    } else {
+      hoverCard.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+      hoverCard.style.top    = 'auto';
+    }
+    hoverCard.style.display = 'block';
+  }
+
+  var contentEl = document.getElementById('content');
+
+  contentEl.addEventListener('mouseover', function(e) {
+    var row = e.target.closest && e.target.closest('.snippet-row');
+    if (!row) {
+      clearTimeout(hoverTimer);
+      currentHoverId = null;
+      hoverCard.style.display = 'none';
+      return;
+    }
+    var id = row.dataset.id;
+    if (id === currentHoverId) return;
+    currentHoverId = id;
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(function() {
+      if (currentHoverId !== id) return;
+      var s = snippets.find(function(x) { return x.id === id; });
+      if (s) showHoverCard(s, row);
+    }, 500);
+  });
+
+  contentEl.addEventListener('mouseleave', function() {
+    clearTimeout(hoverTimer);
+    currentHoverId = null;
+    hoverCard.style.display = 'none';
+  });
 
   document.getElementById('content').addEventListener('click', function(e) {
     var hdr = e.target.closest('[data-group]');
