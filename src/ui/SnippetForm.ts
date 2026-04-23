@@ -81,6 +81,8 @@ export class SnippetForm {
 
   private static getHtml(code: string, language: string, editable: boolean): string {
     const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const jsCode = JSON.stringify(code);
+    const jsLanguage = JSON.stringify(language);
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -208,13 +210,13 @@ export class SnippetForm {
       const title = document.getElementById('title').value.trim();
       if (!title) { document.getElementById('title').focus(); return; }
       const codeEl = document.getElementById('code');
-      const code = codeEl ? codeEl.value : '${escapedCode}';
+      const code = codeEl ? codeEl.value : ${jsCode};
       if (!code.trim()) { codeEl && codeEl.focus(); return; }
       vscode.postMessage({
         command: 'submit',
         title,
         tags: document.getElementById('tags').value,
-        language: document.getElementById('language').value.trim() || '${language}',
+        language: document.getElementById('language').value.trim() || ${jsLanguage},
         code,
       });
     }
