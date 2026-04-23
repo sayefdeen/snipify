@@ -74,7 +74,13 @@ export class GitHubGistStorage implements ISnippetStorage {
   async getAll(): Promise<Snippet[]> {
     const res = await fetch(`${GISTS_API}?per_page=100`, { headers: this.headers });
     if (!res.ok) {
-      throw new Error(`Failed to fetch gists: ${res.statusText}`);
+      const resetHeader = res.headers.get('X-RateLimit-Reset');
+      const resetAt = resetHeader ? parseInt(resetHeader, 10) * 1000 : undefined;
+      const err = Object.assign(new Error(`Failed to fetch gists: ${res.statusText}`), {
+        status: res.status,
+        resetAt,
+      });
+      throw err;
     }
     const gists = (await res.json()) as GistResponse[];
 

@@ -23,7 +23,7 @@ Snipify is a VS Code extension. All platform-specific concerns (auth and storage
 extension.ts
   └── AuthProviderFactory  →  IAuthProvider   ←  GitHubAuthProvider (V1)
   └── StorageFactory       →  ISnippetStorage ←  GitHubGistStorage  (V1)
-  └── SidebarViewProvider  (WebView sidebar — search, grouped list, usage counts)
+  └── SidebarViewProvider  (WebView sidebar — search, grouped list, hover preview, error banners)
   └── SnippetForm          (WebView panel — save / new snippet)
   └── SnippetQuickPick     (command palette fuzzy search, Ctrl+Shift+S)
   └── commands/*           (thin wrappers — business logic lives in providers)
@@ -46,12 +46,33 @@ Tokens flow through `src/utils/tokenStorage.ts` which wraps VS Code `SecretStora
 
 Each snippet = one private Gist. The Gist filename = snippet title; the Gist description = readable string `Language: x, Tags: y`. The `mapGistToSnippet()` method in `GitHubGistStorage` owns this mapping. `html_url` from the Gist API is stored as `Snippet.url` and exposed as a "Copy Gist URL" action in the sidebar.
 
+### Offline cache
+
+On each successful load, snippets are written to `globalStorageUri/snippets-cache.json` via `vscode.workspace.fs`. On failure, the cached file is read back and the sidebar shows an offline chip with the cache timestamp. Cache writes are non-fatal — failures are silently swallowed.
+
+### Error classification
+
+`classifyError()` in `extension.ts` maps HTTP status codes / message strings to `ErrorKind`:
+- `token-expired` — 401
+- `scope` — 403 with permission/scope mention
+- `rate-limit` — 403/429; `GitHubGistStorage.getAll()` attaches `resetAt` (ms) from the `X-RateLimit-Reset` header
+- `unreachable` — anything else
+
 ### globalState keys
 
 | Key | Type | Purpose |
 |---|---|---|
 | `snipify.pinnedIds` | `string[]` | IDs of pinned snippets |
 | `snipify.usageCounts` | `Record<string, number>` | Per-snippet insert counters |
+| `snipify.onboardingDone` | `boolean` | Hides the onboarding card after first save |
+
+### Sidebar state machine
+
+`SidebarViewProvider` tracks `_auth` (`signed-out` | `loading` | `ready`), `_error`, `_offlineCachedAt`, and `_showOnboarding`. Every setter calls `_push()` which posts an `update` message to the webview. The webview's `render()` function is the single place that decides what to display.
+
+### Snippet grouping
+
+The sidebar groups snippets as: **Pinned → Most Used (top 5, ≥2 uses) → Today → This Week → This Month → Earlier**. Filtered (search) results skip grouping and show a flat list.
 
 ### Stub providers
 
@@ -65,3 +86,5 @@ Each snippet = one private Gist. The Gist filename = snippet title; the Gist des
 - TypeScript strict mode is on — no `any`, no implicit returns
 - `IAuthProvider` and `ISnippetStorage` interfaces must never change — new providers implement them as-is
 - Snippet inserts go through `editor.insertSnippet(new vscode.SnippetString(...))` so tab stops work
+- Both `SidebarViewProvider` and `SnippetForm` webviews must include a `Content-Security-Policy` meta tag
+- `GitHubGistStorage` error objects must include `status` and (where available) `resetAt` properties so `classifyError()` can use them

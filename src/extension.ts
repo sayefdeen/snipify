@@ -215,10 +215,6 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
 
-        case 'use-local':
-          vscode.window.showInformationMessage('Local-only storage is coming in a future version of Snipify.');
-          break;
-
         case 'saveSnippet':
           await vscode.commands.executeCommand('snipify.saveSnippet');
           break;

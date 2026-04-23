@@ -13,7 +13,6 @@ export type SidebarMessage =
   | { type: 'copyLink'; id: string }
   | { type: 'refresh' }
   | { type: 'login' }
-  | { type: 'use-local' }
   | { type: 'saveSnippet' }
   | { type: 'dismiss-onboarding' }
   | { type: 'dismiss-banner' };
@@ -518,8 +517,7 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
         null,
         'Sign in with GitHub to sync your snippets across every window — backed by private Gists.',
         [
-          { label: 'Sign in with GitHub', cls: 'primary',   action: 'login' },
-          { label: 'Use locally without syncing', cls: 'secondary', action: 'use-local' },
+          { label: 'Sign in with GitHub', cls: 'primary', action: 'login' },
         ]
       );
       return;

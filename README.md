@@ -8,12 +8,14 @@ Save, manage, and reuse code snippets — synced to your GitHub Gists.
 - **Search** snippets by title, language, or tag directly in the sidebar
 - **Insert** a snippet at the cursor with a single click — supports VS Code tab stops (`$1`, `${1:placeholder}`)
 - **Pin** frequently used snippets to the top of the list
-- **Grouped view**: Pinned → Most Used → Recent → All Snippets
-- **Usage counter** — insert count shown beside each snippet title; "Most Used" group surfaces your top 5
+- **Time-based grouping**: Pinned → Most Used → Today → This Week → This Month → Earlier
+- **Usage counter** — insert count shown beside each snippet title; Most Used surfaces your top 5
+- **Hover preview** — hover any snippet row to preview the code without inserting it
 - **Language icons** for TypeScript, JavaScript, Python, Go, Rust, CSS, and more
 - **Copy Gist URL** — share any snippet as a GitHub Gist link in one click
 - **Export snippets** to `.code-snippets` (VS Code native) or JSON
 - **Import snippets** from `.code-snippets` or a Snipify JSON export
+- **Offline support** — snippets cached locally so the list stays available when GitHub is unreachable
 - Synced privately to **GitHub Gists** — accessible from any machine
 
 ## Getting Started
@@ -51,6 +53,18 @@ All shortcuts are remappable via **File → Preferences → Keyboard Shortcuts**
 | `+` | New snippet |
 | `⟳` | Refresh |
 | `⋯` | Export / Import |
+
+## Error states
+
+When GitHub is unreachable or your token expires, Snipify shows a banner above the list explaining what happened and what you can still do. Your last-synced snippets remain visible from the local cache — you can still insert and search them. Click **Dismiss** to hide the banner and continue working.
+
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `snipify.provider` | `github` | Storage backend (`github`, `gitlab`, `bitbucket`) |
+
+GitLab and Bitbucket providers are planned for a future release.
 
 ## Requirements
 

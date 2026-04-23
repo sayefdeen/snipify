@@ -3,10 +3,21 @@
   "displayName": "Snipify",
   "description": "Save, manage, and reuse code snippets synced to GitHub Gists",
   "version": "0.0.1",
+  "publisher": "snipify",
+  "author": {
+    "name": "Saif Alrawad",
+    "email": "sayefdeen.alrawad@gmail.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sayefdeen/snipify"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
+  "categories": ["Snippets", "Other"],
+  "keywords": ["snippets", "gist", "github", "productivity"],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
