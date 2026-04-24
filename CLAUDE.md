@@ -15,7 +15,7 @@ To launch the extension in the VS Code Extension Development Host, press `F5` in
 
 ## Architecture
 
-Snipify is a VS Code extension. All platform-specific concerns (auth and storage) sit behind interfaces — commands and UI **never** call GitHub/GitLab/Bitbucket APIs directly.
+Snipify is a VS Code extension. All platform-specific concerns (auth and storage) sit behind interfaces — commands and UI **never** call GitHub/Bitbucket APIs directly.
 
 ### Dependency flow
 
@@ -86,9 +86,6 @@ Each snippet = one JSON file in a private repo named `snipify-snippets` in the u
 - Auth token requires: `read:user:bitbucket`, `read/write/delete/admin:repository:bitbucket`
 - Login flow asks for email, token, and workspace slug; verifies the repo exists before storing
 
-### Stub providers
-
-`GitLabAuthProvider` and `GitLabSnippetStorage` exist as stubs that throw `"coming soon"`. They must remain — the factories reference them and adding a real implementation later requires zero changes elsewhere.
 
 ## Key rules
 

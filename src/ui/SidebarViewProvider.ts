@@ -492,10 +492,9 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
   var PROVIDER_ICONS = {
     github:    '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>',
     bitbucket: '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M2.65 3A1.25 1.25 0 0 0 1.4 4.48l2.96 14.76a1.7 1.7 0 0 0 1.66 1.38h11.97a1.25 1.25 0 0 0 1.23-1.04L22.6 4.49A1.25 1.25 0 0 0 21.35 3H2.65zm11.24 10.43H10.1L9.07 8.1h5.87l-1.05 5.33z"/></svg>',
-    gitlab:    '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51a.42.42 0 0 1 .82 0l2.44 7.51h8.06l2.44-7.51a.42.42 0 0 1 .82 0l2.44 7.51 1.22 3.78a.84.84 0 0 1-.3.94z"/></svg>',
   };
-  var PROVIDER_NAMES = { github: 'GitHub', bitbucket: 'Bitbucket', gitlab: 'GitLab' };
-  var PROVIDER_BACKENDS = { github: 'private Gists', bitbucket: 'Bitbucket Snippets', gitlab: 'GitLab Snippets' };
+  var PROVIDER_NAMES = { github: 'GitHub', bitbucket: 'Bitbucket' };
+  var PROVIDER_BACKENDS = { github: 'private Gists', bitbucket: 'Bitbucket repository' };
   var SPARKLE_SVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>';
   var SPIN_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>';
 

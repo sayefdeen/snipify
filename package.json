@@ -128,7 +128,6 @@
           "default": "github",
           "enum": [
             "github",
-            "gitlab",
             "bitbucket"
           ],
           "description": "The platform to use for storing snippets"

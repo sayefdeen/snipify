@@ -28,7 +28,7 @@ The core user flow is:
 
 ## Architecture
 
-Everything platform-specific (auth and storage) sits behind an **interface**. Commands and UI never call GitHub/GitLab/Bitbucket APIs directly — only through the interface. This makes adding new providers require zero changes to existing code.
+Everything platform-specific (auth and storage) sits behind an **interface**. Commands and UI never call GitHub/Bitbucket APIs directly — only through the interface. This makes adding new providers require zero changes to existing code.
 
 ### Dependency flow
 
@@ -78,13 +78,11 @@ snipify/
     ├── auth/
     │   ├── IAuthProvider.ts
     │   ├── GitHubAuthProvider.ts
-    │   ├── GitLabAuthProvider.ts       # Stub
     │   ├── BitbucketAuthProvider.ts    # Full implementation
     │   └── AuthProviderFactory.ts
     ├── storage/
     │   ├── ISnippetStorage.ts
     │   ├── GitHubGistStorage.ts
-    │   ├── GitLabSnippetStorage.ts     # Stub
     │   ├── BitbucketStorage.ts         # Full implementation
     │   └── StorageFactory.ts
     ├── ui/
@@ -113,7 +111,6 @@ snipify/
 - Always use `AuthProviderFactory` / `StorageFactory` to obtain providers
 - Auth tokens only via `SecretStorage` (never `globalState` or workspace config)
 - TypeScript strict mode — no `any`, no implicit returns
-- Stub providers (GitLab, Bitbucket) must remain — factories reference them
 - Both webviews (SidebarViewProvider, SnippetForm) must include a CSP meta tag
 - Error objects thrown from storage must include `status` and `resetAt` so `classifyError` can use them
 
@@ -224,7 +221,6 @@ snipify/
 - [x] Login flow — modal setup checklist (scopes + repo creation instructions), then 3-step input (email → token → workspace slug)
 
 ### Phase 15 — Future (V2+)
-- [ ] GitLab Snippets storage implementation
 - [ ] Snippet sharing (public Gist toggle)
 - [ ] Import existing Gists by URL
 - [ ] Snippet categories → better tag UX (multi-select filter, tag autocomplete)

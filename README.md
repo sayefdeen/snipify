@@ -22,7 +22,6 @@ Save, manage, and reuse code snippets — synced to the cloud via GitHub Gists o
 |---|---|---|
 | GitHub | ✅ | Private GitHub Gists |
 | Bitbucket | ✅ | Private `snipify-snippets` repo in your workspace |
-| GitLab | 🔜 | Coming soon |
 
 ## Getting Started
 
@@ -82,7 +81,7 @@ When the provider is unreachable or your token expires, Snipify shows a banner a
 
 | Setting | Default | Description |
 |---|---|---|
-| `snipify.provider` | `github` | Storage backend: `github`, `bitbucket`, or `gitlab` |
+| `snipify.provider` | `github` | Storage backend: `github` or `bitbucket` |
 
 Changing the provider setting will prompt you to export your current snippets before switching.
 

@@ -1,4 +1,4 @@
-export type ProviderType = 'github' | 'gitlab' | 'bitbucket';
+export type ProviderType = 'github' | 'bitbucket';
 
 export interface User {
   id: string;

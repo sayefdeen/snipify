@@ -51,7 +51,7 @@ export function parseSnipifyJson(raw: unknown): Array<{ title: string; language:
 
 export async function importSnippetsCommand(
   storage: ISnippetStorage,
-  provider: 'github' | 'gitlab' | 'bitbucket'
+  provider: 'github' | 'bitbucket'
 ): Promise<number> {
   const uris = await vscode.window.showOpenDialog({
     canSelectMany: false,
