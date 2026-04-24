@@ -74,9 +74,21 @@ On each successful load, snippets are written to `globalStorageUri/snippets-cach
 
 The sidebar groups snippets as: **Pinned → Most Used (top 5, ≥2 uses) → Today → This Week → This Month → Earlier**. Filtered (search) results skip grouping and show a flat list.
 
+### Bitbucket storage
+
+Each snippet = one JSON file in a private repo named `snipify-snippets` in the user's workspace. The Bitbucket Snippets API was deprecated (CHANGE-2770) — repo-based storage is the replacement.
+
+- Filename = title slug: `"My Hook"` → `my-hook.json` (also used as the snippet `id`)
+- `url` = `https://bitbucket.org/{workspace}/snipify-snippets/src/main/{id}.json`
+- `save()` checks for duplicate title (GET the file first — 200 = already exists → error)
+- `update()` with title change: writes new file then deletes old (two separate commits)
+- `ensureRepo()` checks the repo exists; throws a helpful error with a creation link if not
+- Auth token requires: `read:user:bitbucket`, `read/write/delete/admin:repository:bitbucket`
+- Login flow asks for email, token, and workspace slug; verifies the repo exists before storing
+
 ### Stub providers
 
-`GitLabAuthProvider`, `BitbucketAuthProvider`, `GitLabSnippetStorage`, and `BitbucketStorage` exist as stubs that throw `"coming soon"`. They must remain — the factories reference them and adding a real implementation later requires zero changes elsewhere.
+`GitLabAuthProvider` and `GitLabSnippetStorage` exist as stubs that throw `"coming soon"`. They must remain — the factories reference them and adding a real implementation later requires zero changes elsewhere.
 
 ## Key rules
 

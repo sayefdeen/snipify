@@ -79,13 +79,13 @@ snipify/
     │   ├── IAuthProvider.ts
     │   ├── GitHubAuthProvider.ts
     │   ├── GitLabAuthProvider.ts       # Stub
-    │   ├── BitbucketAuthProvider.ts    # Stub
+    │   ├── BitbucketAuthProvider.ts    # Full implementation
     │   └── AuthProviderFactory.ts
     ├── storage/
     │   ├── ISnippetStorage.ts
     │   ├── GitHubGistStorage.ts
     │   ├── GitLabSnippetStorage.ts     # Stub
-    │   ├── BitbucketStorage.ts         # Stub
+    │   ├── BitbucketStorage.ts         # Full implementation
     │   └── StorageFactory.ts
     ├── ui/
     │   ├── SidebarViewProvider.ts      # Full WebView sidebar (search + list)
@@ -213,9 +213,18 @@ snipify/
 - [x] **CHANGELOG.md** — added for Marketplace requirement
 - [x] **Marketplace icon** — `assets/icon.png` (128×128) added; `package.json` updated to reference it
 
-### Phase 14 — Future (V2+)
+### Phase 14 — Bitbucket Provider ✅
+- [x] `BitbucketAuthProvider` — email + Atlassian API token, workspace slug input, repo existence check on login
+- [x] `BitbucketStorage` — repo-based storage in private `snipify-snippets` git repo (Snippets API deprecated CHANGE-2770)
+- [x] Filename derived from snippet title (`"My Hook"` → `my-hook.json`), used as snippet id
+- [x] Duplicate title detection — error thrown before overwriting
+- [x] Rename handling — writes new file + deletes old in two commits when title changes
+- [x] `url` set to Bitbucket web URL for each snippet (share button works)
+- [x] `ensureRepo()` — checks repo exists, throws helpful error with creation link if missing
+- [x] Login flow — modal setup checklist (scopes + repo creation instructions), then 3-step input (email → token → workspace slug)
+
+### Phase 15 — Future (V2+)
 - [ ] GitLab Snippets storage implementation
 - [ ] Snippet sharing (public Gist toggle)
 - [ ] Import existing Gists by URL
 - [ ] Snippet categories → better tag UX (multi-select filter, tag autocomplete)
-- [ ] GitHub Repo as storage backend

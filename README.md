@@ -1,6 +1,6 @@
 # Snipify
 
-Save, manage, and reuse code snippets — synced to your GitHub Gists.
+Save, manage, and reuse code snippets — synced to the cloud via GitHub Gists or Bitbucket.
 
 ## Features
 
@@ -10,20 +10,40 @@ Save, manage, and reuse code snippets — synced to your GitHub Gists.
 - **Pin** frequently used snippets to the top of the list
 - **Time-based grouping**: Pinned → Most Used → Today → This Week → This Month → Earlier
 - **Usage counter** — insert count shown beside each snippet title; Most Used surfaces your top 5
-- **Hover preview** — hover any snippet row to preview the code without inserting it
 - **Language icons** for TypeScript, JavaScript, Python, Go, Rust, CSS, and more
-- **Copy Gist URL** — share any snippet as a GitHub Gist link in one click
+- **Share link** — copy a direct URL to any snippet in one click
 - **Export snippets** to `.code-snippets` (VS Code native) or JSON
 - **Import snippets** from `.code-snippets` or a Snipify JSON export
-- **Offline support** — snippets cached locally so the list stays available when GitHub is unreachable
-- Synced privately to **GitHub Gists** — accessible from any machine
+- **Offline support** — snippets cached locally so the list stays available when the provider is unreachable
+
+## Providers
+
+| Provider | Status | Storage |
+|---|---|---|
+| GitHub | ✅ | Private GitHub Gists |
+| Bitbucket | ✅ | Private `snipify-snippets` repo in your workspace |
+| GitLab | 🔜 | Coming soon |
 
 ## Getting Started
+
+### GitHub
 
 1. Open the Snipify panel in the Activity Bar
 2. Click **Sign in with GitHub** and authorize the app
 3. Select code in the editor, right-click, and choose **Save Snippet**
 4. Click any snippet in the sidebar to insert it at the cursor
+
+### Bitbucket
+
+1. Create a private repository named **`snipify-snippets`** in your Bitbucket workspace at `bitbucket.org/{workspace}` → Repositories → Create repository
+2. Create an Atlassian API token at [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens) with these scopes:
+   - `read:user:bitbucket`
+   - `read:repository:bitbucket`
+   - `write:repository:bitbucket`
+   - `delete:repository:bitbucket`
+   - `admin:repository:bitbucket`
+3. In VS Code Settings, set `snipify.provider` to `bitbucket` and reload
+4. Open the Snipify panel and click **Login** — enter your Atlassian email, API token, and workspace slug
 
 ## Commands
 
@@ -32,10 +52,10 @@ Save, manage, and reuse code snippets — synced to your GitHub Gists.
 | `Snipify: Save Snippet` | Save selected code as a snippet |
 | `Snipify: Search Snippets` | Fuzzy-search and insert via quick pick |
 | `Snipify: New Snippet` | Open the snippet form without a selection |
-| `Snipify: Refresh Snippets` | Reload snippets from GitHub Gists |
+| `Snipify: Refresh Snippets` | Reload snippets from the provider |
 | `Snipify: Export Snippets` | Export to `.code-snippets` or JSON |
 | `Snipify: Import Snippets` | Import from `.code-snippets` or JSON |
-| `Snipify: Login with GitHub` | Authenticate with GitHub |
+| `Snipify: Login` | Authenticate with the configured provider |
 | `Snipify: Logout` | Sign out |
 
 ## Keyboard Shortcuts
@@ -46,7 +66,7 @@ Save, manage, and reuse code snippets — synced to your GitHub Gists.
 
 All shortcuts are remappable via **File → Preferences → Keyboard Shortcuts** (`Ctrl+K Ctrl+S` / `Cmd+K Cmd+S`).
 
-## Sidebar toolbar
+## Sidebar Toolbar
 
 | Button | Action |
 |---|---|
@@ -54,19 +74,19 @@ All shortcuts are remappable via **File → Preferences → Keyboard Shortcuts**
 | `⟳` | Refresh |
 | `⋯` | Export / Import |
 
-## Error states
+## Error States
 
-When GitHub is unreachable or your token expires, Snipify shows a banner above the list explaining what happened and what you can still do. Your last-synced snippets remain visible from the local cache — you can still insert and search them. Click **Dismiss** to hide the banner and continue working.
+When the provider is unreachable or your token expires, Snipify shows a banner above the list explaining what happened. Your last-synced snippets remain visible from the local cache — you can still insert and search them. Click **Dismiss** to hide the banner.
 
 ## Settings
 
 | Setting | Default | Description |
 |---|---|---|
-| `snipify.provider` | `github` | Storage backend (`github`, `gitlab`, `bitbucket`) |
+| `snipify.provider` | `github` | Storage backend: `github`, `bitbucket`, or `gitlab` |
 
-GitLab and Bitbucket providers are planned for a future release.
+Changing the provider setting will prompt you to export your current snippets before switching.
 
 ## Requirements
 
-- A GitHub account
 - VS Code 1.85+
+- A GitHub account (for the GitHub provider) or a Bitbucket account (for the Bitbucket provider)
