@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Snippet } from '../models/Snippet';
+import { ProviderType } from '../models/User';
 
 export type AuthState = 'signed-out' | 'loading' | 'ready';
 export type ErrorKind = 'unreachable' | 'rate-limit' | 'token-expired' | 'scope';
@@ -50,7 +51,10 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   private readonly _onMessage = new vscode.EventEmitter<SidebarMessage>();
   readonly onMessage = this._onMessage.event;
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly providerType: ProviderType = 'github'
+  ) {}
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this._view = view;
@@ -143,6 +147,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     }
 
     const iconsJson = JSON.stringify(iconMap);
+    const providerJson = JSON.stringify(this.providerType);
 
     return /* html */`<!DOCTYPE html>
 <html lang="en">
@@ -297,6 +302,7 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
 (function() {
   var vscode = acquireVsCodeApi();
   var ICONS = ${iconsJson};
+  var PROVIDER = ${providerJson};
   var FALLBACK = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="%236E6E6E"/></svg>';
 
   var auth = 'loading';
@@ -349,12 +355,16 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
   }
 
   // ── Banner ───────────────────────────────────────────────────────────
-  var ERROR_META = {
-    'unreachable':   { tone: 'warn',  icon: 'cloudOff', title: "Can't reach GitHub",       sub: 'Showing last cached snippets. New saves will sync when you&rsquo;re back online.', primary: 'Retry now',       secondary: null,                   primaryMsg: 'refresh' },
-    'rate-limit':    { tone: 'warn',  icon: 'watch',    title: 'GitHub rate limit reached', sub: null,                                                                               primary: 'Sign in to raise limit to 5,000/hr', secondary: null,             primaryMsg: 'login' },
-    'token-expired': { tone: 'error', icon: 'key',      title: 'GitHub session expired',    sub: 'Your snippets are safe. Sign in again to resume syncing.',                         primary: 'Sign in again',   secondary: 'Keep working offline',  primaryMsg: 'login' },
-    'scope':         { tone: 'error', icon: 'shield',   title: 'Missing gist permission',   sub: 'Your token can read gists but not write them. Re-authorize to grant gist scope.',  primary: 'Re-authorize',    secondary: null,                   primaryMsg: 'login' },
-  };
+  function getErrorMeta() {
+    var pName = PROVIDER_NAMES[PROVIDER] || PROVIDER;
+    var isGH  = PROVIDER === 'github';
+    return {
+      'unreachable':   { tone: 'warn',  icon: 'cloudOff', title: "Can't reach " + pName,            sub: 'Showing last cached snippets. New saves will sync when you&rsquo;re back online.',                                                              primary: 'Retry now',                          secondary: null,                   primaryMsg: 'refresh' },
+      'rate-limit':    { tone: 'warn',  icon: 'watch',    title: pName + ' rate limit reached',      sub: null,                                                                                                                                             primary: 'Sign in to raise limit to 5,000/hr', secondary: null,                   primaryMsg: 'login'   },
+      'token-expired': { tone: 'error', icon: 'key',      title: pName + ' session expired',         sub: 'Your snippets are safe. Sign in again to resume syncing.',                                                                                      primary: 'Sign in again',                      secondary: 'Keep working offline', primaryMsg: 'login'   },
+      'scope':         { tone: 'error', icon: 'shield',   title: 'Missing ' + (isGH ? 'gist' : 'snippet') + ' permission', sub: isGH ? 'Your token can read gists but not write them. Re-authorize to grant gist scope.' : 'Your token is missing required scopes. Create a new token with all required scopes.', primary: 'Re-authorize', secondary: null, primaryMsg: 'login' },
+    };
+  }
 
   function startCountdown(resetAt) {
     clearInterval(countdownInterval);
@@ -386,7 +396,7 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
     }
 
     if (errorState) {
-      var m = ERROR_META[errorState.kind];
+      var m = getErrorMeta()[errorState.kind];
       if (!m) { el.innerHTML = ''; return; }
       var sub = m.sub;
       if (errorState.kind === 'rate-limit') {
@@ -434,7 +444,7 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
       +countBadge
       +'<span class="snippet-desc">'+esc(desc)+'</span>'
       +'<div class="snippet-actions">'+pinBtn
-      +(s.url ? '<button class="action-btn" title="Copy Gist URL" data-action="copyLink" data-id="'+esc(s.id)+'">'+LINK_SVG+'</button>' : '')
+      +(s.url ? '<button class="action-btn" title="Copy snippet URL" data-action="copyLink" data-id="'+esc(s.id)+'">'+LINK_SVG+'</button>' : '')
       +'<button class="action-btn" title="Edit"   data-action="edit"   data-id="'+esc(s.id)+'">'+EDIT_SVG+'</button>'
       +'<button class="action-btn" title="Delete" data-action="delete" data-id="'+esc(s.id)+'">'+DEL_SVG+'</button>'
       +'</div></div>';
@@ -472,14 +482,20 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
       +'</div>'
       +onbStep(1,'Select code','Highlight any lines in the editor.','done')
       +onbStep(2,'Right-click → Save Snippet','Or run Snipify: Save from the command palette.','active')
-      +onbStep(3,'Give it a name & tags','Snippets sync privately via GitHub Gists.','todo')
+      +onbStep(3,'Give it a name & tags','Snippets sync privately via '+(PROVIDER_BACKENDS[PROVIDER]||'the cloud')+'.','todo')
       +'</div>'
       +'<div class="ghost-label">Your snippets will appear here</div>'
       +ghosts;
   }
 
   // ── SVG icons for welcome states ─────────────────────────────────────
-  var GITHUB_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>';
+  var PROVIDER_ICONS = {
+    github:    '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>',
+    bitbucket: '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M2.65 3A1.25 1.25 0 0 0 1.4 4.48l2.96 14.76a1.7 1.7 0 0 0 1.66 1.38h11.97a1.25 1.25 0 0 0 1.23-1.04L22.6 4.49A1.25 1.25 0 0 0 21.35 3H2.65zm11.24 10.43H10.1L9.07 8.1h5.87l-1.05 5.33z"/></svg>',
+    gitlab:    '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51a.42.42 0 0 1 .82 0l2.44 7.51h8.06l2.44-7.51a.42.42 0 0 1 .82 0l2.44 7.51 1.22 3.78a.84.84 0 0 1-.3.94z"/></svg>',
+  };
+  var PROVIDER_NAMES = { github: 'GitHub', bitbucket: 'Bitbucket', gitlab: 'GitLab' };
+  var PROVIDER_BACKENDS = { github: 'private Gists', bitbucket: 'Bitbucket Snippets', gitlab: 'GitLab Snippets' };
   var SPARKLE_SVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>';
   var SPIN_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>';
 
@@ -503,7 +519,7 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
         +'</div>';
     }).join('');
     return '<div class="skeleton-wrap">'+rows
-      +'<div class="skeleton-footer">'+SPIN_SVG+'<span>Syncing from GitHub…</span></div>'
+      +'<div class="skeleton-footer">'+SPIN_SVG+'<span>Syncing from '+(PROVIDER_NAMES[PROVIDER]||PROVIDER)+'…</span></div>'
       +'</div>';
   }
 
@@ -512,13 +528,13 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
     var el = document.getElementById('content');
 
     if (auth === 'signed-out') {
+      var pName = PROVIDER_NAMES[PROVIDER] || PROVIDER;
+      var pBack = PROVIDER_BACKENDS[PROVIDER] || 'cloud';
       el.innerHTML = welcomeHtml(
-        GITHUB_SVG,
+        PROVIDER_ICONS[PROVIDER] || PROVIDER_ICONS.github,
         null,
-        'Sign in with GitHub to sync your snippets across every window — backed by private Gists.',
-        [
-          { label: 'Sign in with GitHub', cls: 'primary', action: 'login' },
-        ]
+        'Sign in with '+pName+' to sync your snippets across every window — backed by '+pBack+'.',
+        [{ label: 'Sign in with '+pName, cls: 'primary', action: 'login' }]
       );
       return;
     }
@@ -533,7 +549,7 @@ html,body{margin:0;padding:0;font-family:var(--vscode-font-family);font-size:var
       el.innerHTML = showOnboarding ? onboardingHtml() : welcomeHtml(
         SPARKLE_SVG,
         'No snippets yet',
-        'Select code anywhere in the editor, then run <a data-action=”saveSnippet”>Snipify: Save selection</a> to save it. Your snippets sync to a private Gist.',
+        'Select code anywhere in the editor, then run <a data-action=”saveSnippet”>Snipify: Save selection</a> to save it. Your snippets sync to '+(PROVIDER_BACKENDS[PROVIDER]||'the cloud')+'.',
         [{ label: 'Save selection as snippet', cls: 'primary', action: 'saveSnippet' }]
       );
       return;

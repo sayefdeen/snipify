@@ -13,7 +13,7 @@ export class AuthProviderFactory {
       case 'gitlab':
         return new GitLabAuthProvider();
       case 'bitbucket':
-        return new BitbucketAuthProvider();
+        return new BitbucketAuthProvider(secrets);
       default: {
         const _exhaustive: never = provider;
         throw new Error(`Unknown provider: ${_exhaustive}`);

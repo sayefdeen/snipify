@@ -17,15 +17,16 @@ import { importSnippetsCommand } from './commands/importSnippets';
 
 const PINNED_KEY     = 'snipify.pinnedIds';
 const USAGE_KEY      = 'snipify.usageCounts';
-const ONBOARDING_KEY = 'snipify.onboardingDone';
 const CACHE_FILE     = 'snippets-cache.json';
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = vscode.workspace.getConfiguration('snipify');
   const providerType = (config.get<string>('provider') ?? 'github') as ProviderType;
 
+  const ONBOARDING_KEY = `snipify.onboardingDone.${providerType}`;
+
   const auth = AuthProviderFactory.create(providerType, context.secrets);
-  const sidebar = new SidebarViewProvider(context.extensionUri);
+  const sidebar = new SidebarViewProvider(context.extensionUri, providerType);
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(SidebarViewProvider.viewId, sidebar)
@@ -34,7 +35,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBar.command = 'snipify.login';
   statusBar.text = '$(account) Snipify';
-  statusBar.tooltip = 'Click to log in with GitHub';
+  statusBar.tooltip = `Click to log in with ${providerType}`;
   statusBar.show();
   context.subscriptions.push(statusBar);
 
@@ -48,13 +49,13 @@ export function activate(context: vscode.ExtensionContext): void {
       statusBar.tooltip = `Logged in as ${user.username}`;
     } else {
       statusBar.text = '$(account) Snipify';
-      statusBar.tooltip = 'Click to log in with GitHub';
+      statusBar.tooltip = `Click to log in with ${providerType}`;
     }
   };
 
   const getStorage = async (): Promise<ReturnType<typeof StorageFactory.create>> => {
     const token = await auth.getToken();
-    if (!token) throw new Error('Not logged in. Run "Snipify: Login with GitHub" first.');
+    if (!token) throw new Error(`Not logged in. Run "Snipify: Login" first.`);
     return StorageFactory.create(providerType, token);
   };
 
@@ -206,7 +207,7 @@ export function activate(context: vscode.ExtensionContext): void {
           const s = currentSnippets.find((x) => x.id === msg.id);
           if (s?.url) {
             await vscode.env.clipboard.writeText(s.url);
-            vscode.window.showInformationMessage(`Snipify: Gist URL copied to clipboard`);
+            vscode.window.showInformationMessage(`Snipify: Snippet URL copied to clipboard`);
           }
           break;
         }
@@ -284,7 +285,7 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         const storage = await getStorage();
         SnippetForm.showNew(context, async (data) => {
-          await storage.save({ ...data, provider: 'github' });
+          await storage.save({ ...data, provider: providerType });
           vscode.window.showInformationMessage(`Snipify: "${data.title}" saved!`);
           await loadSnippets();
         });
@@ -364,7 +365,17 @@ export function activate(context: vscode.ExtensionContext): void {
       );
       if (choice === 'Export first…') {
         await exportSnippetsCommand(currentSnippets);
-      } else if (choice !== 'Switch anyway') {
+        const reload = await vscode.window.showInformationMessage(
+          `Export done. Reload window to activate ${newProvider}?`,
+          'Reload now',
+          'Later'
+        );
+        if (reload === 'Reload now') {
+          await vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
+      } else if (choice === 'Switch anyway') {
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+      } else {
         // Revert the setting change
         await vscode.workspace.getConfiguration('snipify').update('provider', providerType, vscode.ConfigurationTarget.Global);
       }

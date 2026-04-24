@@ -29,6 +29,9 @@ describe('classifyError', () => {
     it('matches status 403 without scope mention', () => {
       expect(classifyError({ status: 403, message: 'Forbidden' })).toEqual({ kind: 'rate-limit', resetAt: undefined });
     });
+    it('matches status 429 (Bitbucket / standard)', () => {
+      expect(classifyError({ status: 429, message: 'Too Many Requests' })).toEqual({ kind: 'rate-limit', resetAt: undefined });
+    });
     it('matches "rate limit" in message', () => {
       expect(classifyError(new Error('API rate limit exceeded'))).toEqual({ kind: 'rate-limit', resetAt: undefined });
     });

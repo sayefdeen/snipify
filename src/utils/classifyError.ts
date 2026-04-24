@@ -9,7 +9,7 @@ export function classifyError(err: unknown): { kind: ErrorKind; resetAt?: number
   if (status === 403 && (msg.includes('scope') || msg.toLowerCase().includes('permission'))) {
     return { kind: 'scope' };
   }
-  if (status === 403 || msg.includes('rate limit') || msg.includes('429')) {
+  if (status === 429 || status === 403 || msg.includes('rate limit') || msg.includes('429')) {
     const resetAt = (err as { resetAt?: number })?.resetAt;
     return { kind: 'rate-limit', resetAt };
   }
