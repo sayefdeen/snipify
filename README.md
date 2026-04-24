@@ -2,6 +2,8 @@
 
 Save, manage, and reuse code snippets — synced to the cloud via GitHub Gists or Bitbucket.
 
+![Snipify demo](assets/demo.gif)
+
 ## Features
 
 - **Save snippets** from any selection: right-click → *Save Snippet*, or use the `+` button in the sidebar
@@ -29,8 +31,9 @@ Save, manage, and reuse code snippets — synced to the cloud via GitHub Gists o
 
 1. Open the Snipify panel in the Activity Bar
 2. Click **Sign in with GitHub** and authorize the app
-3. Select code in the editor, right-click, and choose **Save Snippet**
-4. Click any snippet in the sidebar to insert it at the cursor
+3. Select code in the editor, right-click → **Save Snippet** — add a title, tags, and language in the form
+4. Click any snippet in the sidebar to insert it at the cursor, or use `Ctrl+Shift+S` / `Cmd+Shift+S` to search and insert via quick pick
+5. Hover a snippet to reveal **pin**, **edit**, and **delete** actions
 
 ### Bitbucket
 
@@ -43,6 +46,8 @@ Save, manage, and reuse code snippets — synced to the cloud via GitHub Gists o
    - `admin:repository:bitbucket`
 3. In VS Code Settings, set `snipify.provider` to `bitbucket` and reload
 4. Open the Snipify panel and click **Login** — enter your Atlassian email, API token, and workspace slug
+5. Select code, right-click → **Save Snippet** — add a title, tags, and language in the form
+6. Hover a snippet to reveal **pin**, **edit**, and **delete** actions
 
 ## Commands
 
@@ -88,4 +93,5 @@ Changing the provider setting will prompt you to export your current snippets be
 ## Requirements
 
 - VS Code 1.85+
-- A GitHub account (for the GitHub provider) or a Bitbucket account (for the Bitbucket provider)
+- **GitHub**: a GitHub account
+- **Bitbucket**: a Bitbucket account, an Atlassian API token with repository scopes, and a manually created private repo named `snipify-snippets` in your workspace
