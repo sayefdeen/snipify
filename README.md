@@ -2,7 +2,7 @@
 
 Save, manage, and reuse code snippets — synced to the cloud via GitHub Gists or Bitbucket.
 
-![Snipify demo](https://raw.githubusercontent.com/sayefdeen/snipify/main/assets/demo.gif)
+![Snipify demo](assets/demo.gif)
 
 ## Features
 
