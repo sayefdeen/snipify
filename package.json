@@ -2,7 +2,7 @@
   "name": "snipify",
   "displayName": "Snipify",
   "description": "Save, manage, and reuse code snippets — synced to GitHub Gists or Bitbucket",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "srawad",
   "icon": "assets/snipify_icon_128.png",
   "license": "MIT",
