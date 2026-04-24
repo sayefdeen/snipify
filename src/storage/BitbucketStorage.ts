@@ -24,6 +24,16 @@ export class BitbucketStorage implements ISnippetStorage {
     return `${BB_API}/repositories/${this.workspace}/${REPO}`;
   }
 
+  // Derive a stable file-safe id from the snippet title.
+  // "My Function" → "my-function"  (used as both id and filename: my-function.json)
+  private titleToId(title: string): string {
+    return title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '') || 'snippet';
+  }
+
+  private snippetUrl(id: string): string {
+    return `https://bitbucket.org/${this.workspace}/${REPO}/src/${BRANCH}/${id}.json`;
+  }
+
   private buildBody(
     fields: Record<string, string>,
     file?: { name: string; content: string }
@@ -67,14 +77,17 @@ export class BitbucketStorage implements ISnippetStorage {
     if (res.status === 404) {
       throw new Error(
         `Snipify needs a private repository named "${REPO}" in your Bitbucket workspace. ` +
-        `Create it at: https://bitbucket.org/repo/create?name=${REPO} — then try again.`
+        `Create it at bitbucket.org/${this.workspace} → Repositories → Create repository, then try again.`
       );
     }
-    throw Object.assign(new Error(`Cannot access ${REPO} repo: ${res.status} ${res.statusText}`), { status: res.status });
+    throw Object.assign(
+      new Error(`Cannot access ${REPO} repo: ${res.status} ${res.statusText}`),
+      { status: res.status }
+    );
   }
 
   async getAll(): Promise<Snippet[]> {
-    const res = await fetch(`${this.repoUrl}/src/${BRANCH}/`, { headers: this.authHeaders });
+    const res = await fetch(`${this.repoUrl}/src/${BRANCH}/?pagelen=100`, { headers: this.authHeaders });
     if (res.status === 404) return [];
     if (!res.ok) {
       const retryAfter = res.headers.get('Retry-After');
@@ -107,9 +120,25 @@ export class BitbucketStorage implements ISnippetStorage {
   async save(snippet: Omit<Snippet, 'id' | 'createdAt' | 'updatedAt'>): Promise<Snippet> {
     await this.ensureRepo();
 
-    const id  = `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+    const id = this.titleToId(snippet.title);
+
+    // Reject duplicate titles — the file would overwrite silently otherwise
+    const existing = await fetch(`${this.repoUrl}/src/${BRANCH}/${id}.json`, {
+      headers: { Authorization: `Basic ${this.credential}` },
+    });
+    if (existing.ok) {
+      throw new Error(`A snippet named "${snippet.title}" already exists. Choose a different title.`);
+    }
+
     const now = new Date();
-    const full: Snippet = { ...snippet, id, createdAt: now, updatedAt: now, provider: 'bitbucket' };
+    const full: Snippet = {
+      ...snippet,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      provider: 'bitbucket',
+      url: this.snippetUrl(id),
+    };
 
     const res = await this.postSrc(
       { message: `Add snippet: ${snippet.title}`, branch: BRANCH },
@@ -126,15 +155,42 @@ export class BitbucketStorage implements ISnippetStorage {
     const current = await this.getById(id);
     if (!current) throw new Error(`Snippet ${id} not found`);
 
-    const merged: Snippet = { ...current, ...updates, updatedAt: new Date() };
-    const res = await this.postSrc(
-      { message: `Update snippet: ${merged.title}`, branch: BRANCH },
-      { name: `${id}.json`, content: JSON.stringify(merged) }
-    );
-    if (!res.ok) {
-      const err = await res.text().catch(() => '');
-      throw new Error(`Failed to update snippet: ${res.status} ${res.statusText} — ${err}`);
+    const newTitle = updates.title ?? current.title;
+    const newId    = this.titleToId(newTitle);
+    const merged: Snippet = {
+      ...current,
+      ...updates,
+      id: newId,
+      updatedAt: new Date(),
+      url: this.snippetUrl(newId),
+    };
+
+    if (newId !== id) {
+      // Title changed — write new file, then delete the old one (two commits)
+      const writeRes = await this.postSrc(
+        { message: `Rename snippet: ${current.title} → ${newTitle}`, branch: BRANCH },
+        { name: `${newId}.json`, content: JSON.stringify(merged) }
+      );
+      if (!writeRes.ok) {
+        const err = await writeRes.text().catch(() => '');
+        throw new Error(`Failed to update snippet: ${writeRes.status} ${writeRes.statusText} — ${err}`);
+      }
+      await this.postSrc({
+        files: `${id}.json`,
+        message: `Remove old file after rename`,
+        branch: BRANCH,
+      });
+    } else {
+      const res = await this.postSrc(
+        { message: `Update snippet: ${merged.title}`, branch: BRANCH },
+        { name: `${id}.json`, content: JSON.stringify(merged) }
+      );
+      if (!res.ok) {
+        const err = await res.text().catch(() => '');
+        throw new Error(`Failed to update snippet: ${res.status} ${res.statusText} — ${err}`);
+      }
     }
+
     return merged;
   }
 
