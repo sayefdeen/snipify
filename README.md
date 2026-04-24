@@ -5,6 +5,14 @@ Save, manage, and reuse code snippets — synced to the cloud via GitHub Gists o
 ![Snipify demo](https://raw.githubusercontent.com/sayefdeen/snipify/main/assets/demo.gif)
 ![Snipify demo](https://raw.githubusercontent.com/sayefdeen/snipify/main/assets/snipify_demo.gif)
 
+### Antigravity IDE
+Install via the CLI:
+```bash
+antigravity --install-extension srawad.snipify
+```
+> If not found, download the `.vsix` from the [Open VSX Registry](https://open-vsx.org/extension/srawad/snipify) and run:
+> `antigravity --install-extension snipify-x.x.x.vsix`
+
 ## Features
 
 - **Save snippets** from any selection: right-click → *Save Snippet*, or use the `+` button in the sidebar
