@@ -1,9 +1,15 @@
 {
   "name": "snipify",
   "displayName": "Snipify",
-  "description": "Save, manage, and reuse code snippets synced to GitHub Gists",
+  "description": "Save, manage, and reuse code snippets — synced to GitHub Gists or Bitbucket",
   "version": "0.0.1",
   "publisher": "srawad",
+  "icon": "assets/snipify_icon_128.png",
+  "license": "MIT",
+  "galleryBanner": {
+    "color": "#1e1b2e",
+    "theme": "dark"
+  },
   "author": {
     "name": "Saif Alrawad",
     "email": "sayefdeen.alrawad@gmail.com"
@@ -21,8 +27,10 @@
   ],
   "keywords": [
     "snippets",
+    "snippet manager",
     "gist",
     "github",
+    "bitbucket",
     "productivity"
   ],
   "activationEvents": [],

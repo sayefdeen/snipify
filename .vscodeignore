@@ -1,0 +1,15 @@
+**/.claude/
+**/.vscode/
+**/src/
+**/node_modules/
+**/*.test.ts
+**/__mocks__/
+PLAN.md
+CLAUDE.md
+CHANGELOG.md
+esbuild.js
+tsconfig.json
+jest.config.js
+.eslintrc*
+.gitignore
+test-bb-save.js
